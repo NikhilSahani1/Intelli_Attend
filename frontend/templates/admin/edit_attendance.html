@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Attendance Record{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h4 class="mb-0"><i class="fas fa-edit me-2"></i>Edit Attendance Record</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label class="form-label">User</label>
+                            <input type="text" class="form-control" value="{{ record.user_name }}" disabled>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Event</label>
+                            <input type="text" class="form-control" value="{{ record.event_name }}" disabled>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="lecture_name" class="form-label">Lecture Name</label>
+                            <input type="text" class="form-control" id="lecture_name" name="lecture_name" 
+                                   value="{{ record.lecture_name or 'Main Session' }}">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="fraud_score" class="form-label">Fraud Score (0.0 - 1.0)</label>
+                            <input type="number" step="0.01" class="form-control" id="fraud_score" name="fraud_score" 
+                                   value="{{ record.fraud_score }}" min="0" max="1">
+                            <small class="text-muted">
+                                0.0 = No fraud, 0.5+ = Suspicious, 0.8+ = High risk
+                            </small>
+                        </div>
+                        
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="verified" name="verified" 
+                                   {% if record.verified %}checked{% endif %}>
+                            <label class="form-check-label" for="verified">Verified Attendance</label>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Original Timestamp</label>
+                            <input type="text" class="form-control" value="{{ record.timestamp }}" disabled>
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('attendance_log') }}" class="btn btn-secondary">
+                                <i class="fas fa-times me-2"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Save Changes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

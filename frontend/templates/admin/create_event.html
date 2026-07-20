@@ -1,0 +1,518 @@
+{% extends "base.html" %}
+
+{% block title %}Create Event{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Create New Event</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <!-- Basic Event Information -->
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Event Name *</label>
+                            <input type="text" class="form-control" id="name" name="name" required>
+                            <small class="text-muted">Example: Tech Summit 2024, AI Workshop</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea class="form-control" id="description" name="description" rows="3"
+                                placeholder="Describe the event, schedule, and important information..."></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="venue" class="form-label">Venue Name</label>
+                            <input type="text" class="form-control" id="venue" name="venue"
+                                placeholder="e.g., Main Auditorium, Room 304, Seminar Hall">
+                            <small class="text-muted">Physical location name</small>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="date" class="form-label">Date *</label>
+                                <input type="date" class="form-control" id="date" name="date" required>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="time" class="form-label">Time</label>
+                                <input type="time" class="form-control" id="time" name="time">
+                                <small class="text-muted">Event start time (optional)</small>
+                            </div>
+                        </div>
+
+                        <!-- GPS Location Verification Section with Degree Direction -->
+                        <div class="card mb-3">
+                            <div class="card-header bg-info text-white">
+                                <h5 class="mb-0"><i class="fas fa-map-marker-alt me-2"></i>Location Verification
+                                    (Anti-Fraud)</h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted small">
+                                    <i class="fas fa-shield-alt me-1"></i>
+                                    Enable location verification to ensure students are physically at the venue when
+                                    marking attendance.
+                                </p>
+
+                                <!-- Option : Location Coordinates -->
+                                <div class="alert alert-light border">
+                                    <strong><i class="fas fa-globe me-2"></i>Option : Location Coordinates</strong>
+                                    <div class="row mt-2">
+                                        <div class="col-md-6 mb-2">
+                                            <label for="venue_latitude" class="form-label">Latitude</label>
+                                            <input type="text" class="form-control" id="venue_latitude"
+                                                name="venue_latitude" placeholder="e.g., 19.0760">
+                                            <small class="text-muted">Example: 19.0760 (Mumbai)</small>
+                                        </div>
+                                        <div class="col-md-6 mb-2">
+                                            <label for="venue_longitude" class="form-label">Longitude</label>
+                                            <input type="text" class="form-control" id="venue_longitude"
+                                                name="venue_longitude" placeholder="e.g., 72.8777">
+                                            <small class="text-muted">Example: 72.8777 (Mumbai)</small>
+                                        </div>
+                                    </div>
+                                </div>
+
+
+
+                                <div class="mb-3">
+                                    <label for="venue_radius" class="form-label">
+                                        <i class="fas fa-expand-alt me-1"></i>Verification Radius (meters)
+                                    </label>
+                                    <input type="number" class="form-control" id="venue_radius" name="venue_radius"
+                                        value="100">
+                                    <small class="text-muted">
+                                        Students within this distance (meters) from venue can mark attendance.
+                                        Default: 100 meters (about 1 minute walk)
+                                    </small>
+                                </div>
+
+                                <!-- Preview -->
+                                <div id="coordinatePreview" class="alert alert-success mt-3" style="display: none;">
+                                    <strong><i class="fas fa-check-circle me-1"></i>Location Set:</strong>
+                                    <span id="previewText"></span>
+                                </div>
+
+                                <!-- Location Helper Buttons -->
+                                <div class="mt-3">
+                                    <button type="button" class="btn btn-sm btn-success" onclick="getCurrentLocation()">
+                                        <i class="fas fa-location-dot me-1"></i>Use My Current Location
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-info" onclick="showLocationGuide()">
+                                        <i class="fas fa-question-circle me-1"></i>How to Get Coordinates
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-secondary"
+                                        onclick="loadExampleLocation()">
+                                        <i class="fas fa-map-marker-alt me-1"></i>Load Example
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Important Notes -->
+                        <div class="alert alert-warning small">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Important:</strong>
+                            If you leave latitude/longitude empty, location verification will be SKIPPED for this event.
+                            Students can mark attendance from anywhere.
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-calendar-plus me-2"></i>Create Event
+                            </button>
+                            <a href="{{ url_for('manage_events') }}" class="btn btn-secondary">
+                                <i class="fas fa-times me-2"></i>Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-control:focus {
+        border-color: #86b7fe;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+
+    .card-header {
+        font-weight: 500;
+    }
+
+    .alert-light {
+        background-color: #f8f9fa;
+    }
+</style>
+
+<script>
+    // Convert DMS to Decimal Degrees
+    function convertDMSToDecimal() {
+        // Latitude conversion
+        let degLat = parseFloat(document.getElementById('deg_lat').value) || 0;
+        let minLat = parseFloat(document.getElementById('min_lat').value) || 0;
+        let secLat = parseFloat(document.getElementById('sec_lat').value) || 0;
+        let dirLat = document.getElementById('dir_lat').value;
+
+        let decimalLat = degLat + (minLat / 60) + (secLat / 3600);
+        if (dirLat === 'S') decimalLat = -decimalLat;
+
+        // Longitude conversion
+        let degLng = parseFloat(document.getElementById('deg_lng').value) || 0;
+        let minLng = parseFloat(document.getElementById('min_lng').value) || 0;
+        let secLng = parseFloat(document.getElementById('sec_lng').value) || 0;
+        let dirLng = document.getElementById('dir_lng').value;
+
+        let decimalLng = degLng + (minLng / 60) + (secLng / 3600);
+        if (dirLng === 'W') decimalLng = -decimalLng;
+
+        // Set decimal values
+        document.getElementById('venue_latitude').value = decimalLat.toFixed(6);
+        document.getElementById('venue_longitude').value = decimalLng.toFixed(6);
+
+        // Show preview
+        showPreview(decimalLat, decimalLng);
+
+        // Show success message
+        showNotification('Coordinates converted successfully!', 'success');
+    }
+
+    // Show location preview
+    function showPreview(lat, lng) {
+        const previewDiv = document.getElementById('coordinatePreview');
+        const previewText = document.getElementById('previewText');
+
+        if (!lat || !lng || (lat === 0 && lng === 0)) {
+            previewDiv.style.display = 'none';
+            return;
+        }
+
+        // Determine direction for display
+        const latDir = lat >= 0 ? 'N' : 'S';
+        const lngDir = lng >= 0 ? 'E' : 'W';
+        const absLat = Math.abs(lat);
+        const absLng = Math.abs(lng);
+
+        // Convert to DMS for display
+        const latDeg = Math.floor(absLat);
+        const latMin = Math.floor((absLat - latDeg) * 60);
+        const latSec = ((absLat - latDeg - latMin / 60) * 3600).toFixed(1);
+
+        const lngDeg = Math.floor(absLng);
+        const lngMin = Math.floor((absLng - lngDeg) * 60);
+        const lngSec = ((absLng - lngDeg - lngMin / 60) * 3600).toFixed(1);
+
+        // REPLACE THE ENTIRE CONTENT OF previewText.innerHTML WITH THIS:
+        previewText.innerHTML = `
+        <strong>Decimal:</strong> ${lat.toFixed(6)}° ${latDir}, ${lng.toFixed(6)}° ${lngDir}<br>
+        <strong>DMS Format:</strong> ${latDeg}° ${latMin}' ${latSec}" ${latDir}, ${lngDeg}° ${lngMin}' ${lngSec}" ${lngDir}<br>
+        <div class="mt-2">
+            <strong>View on Map:</strong><br>
+            <a href="https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}&zoom=15" target="_blank" class="btn btn-sm btn-info mt-1">
+                <i class="fas fa-map"></i> OpenStreetMap (No Login Required)
+            </a>
+            <a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" class="btn btn-sm btn-secondary mt-1" onclick="return confirm('Google Maps may require login. Continue?')">
+                <i class="fab fa-google"></i> Google Maps
+            </a>
+        </div>
+    `;
+        previewDiv.style.display = 'block';
+    }
+
+    // Get user's current location
+    function getCurrentLocation() {
+        if (navigator.geolocation) {
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Getting location...';
+
+            navigator.geolocation.getCurrentPosition(
+                function (position) {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+
+                    document.getElementById('venue_latitude').value = lat.toFixed(6);
+                    document.getElementById('venue_longitude').value = lng.toFixed(6);
+
+                    showPreview(lat, lng);
+                    showNotification('✅ Location captured! Students must be within ' +
+                        document.getElementById('venue_radius').value +
+                        ' meters of this point.', 'success');
+
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                },
+                function (error) {
+                    let errorMessage = 'Unable to get location. ';
+                    switch (error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMessage += 'Please allow location access.';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMessage += 'Location information unavailable.';
+                            break;
+                        case error.TIMEOUT:
+                            errorMessage += 'Location request timed out.';
+                            break;
+                    }
+                    showNotification('❌ ' + errorMessage, 'danger');
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
+        } else {
+            showNotification('❌ Geolocation is not supported by this browser.', 'danger');
+        }
+    }
+
+    // Load example location (Mumbai)
+    function loadExampleLocation() {
+        const exampleLat = 19.0760;
+        const exampleLng = 72.8777;
+
+        document.getElementById('venue_latitude').value = exampleLat;
+        document.getElementById('venue_longitude').value = exampleLng;
+
+        // Update DMS fields
+        updateDMSFromDecimal(exampleLat, exampleLng);
+        showPreview(exampleLat, exampleLng);
+        showNotification('Example location loaded (Mumbai). Update with your actual venue coordinates.', 'info');
+    }
+
+    // Update DMS fields from decimal coordinates
+    function updateDMSFromDecimal(lat, lng) {
+        const absLat = Math.abs(lat);
+        const latDeg = Math.floor(absLat);
+        const latMin = Math.floor((absLat - latDeg) * 60);
+        const latSec = ((absLat - latDeg - latMin / 60) * 3600).toFixed(1);
+
+        document.getElementById('deg_lat').value = latDeg;
+        document.getElementById('min_lat').value = latMin;
+        document.getElementById('sec_lat').value = latSec;
+        document.getElementById('dir_lat').value = lat >= 0 ? 'N' : 'S';
+
+        const absLng = Math.abs(lng);
+        const lngDeg = Math.floor(absLng);
+        const lngMin = Math.floor((absLng - lngDeg) * 60);
+        const lngSec = ((absLng - lngDeg - lngMin / 60) * 3600).toFixed(1);
+
+        document.getElementById('deg_lng').value = lngDeg;
+        document.getElementById('min_lng').value = lngMin;
+        document.getElementById('sec_lng').value = lngSec;
+        document.getElementById('dir_lng').value = lng >= 0 ? 'E' : 'W';
+    }
+
+    // Show location guide
+    function showLocationGuide() {
+        const guideHtml = `
+        <div class="modal fade" id="locationGuideModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header bg-info text-white">
+                        <h5 class="modal-title"><i class="fas fa-map-marked-alt me-2"></i>How to Get Venue Coordinates</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <!-- ADD THIS FIRST METHOD -->
+                        <h6>Method 1: Using OpenStreetMap (Recommended - No Login Required)</h6>
+                        <ol>
+                            <li>Open <a href="https://www.openstreetmap.org" target="_blank">OpenStreetMap.org</a></li>
+                            <li>Search for your venue address</li>
+                            <li>Right-click on the exact venue location</li>
+                            <li>Select "Show address" or look at the URL for coordinates</li>
+                            <li>Copy latitude and longitude into the Decimal Degrees fields above</li>
+                        </ol>
+                        
+                        <hr>
+                        
+                        <!-- Keep existing methods but update Google Maps note -->
+                        <h6>Method 2: Using Google Maps (May require login)</h6>
+                        <ol>
+                            <li>Open <a href="https://maps.google.com" target="_blank">Google Maps</a></li>
+                            <li>Search for your venue address</li>
+                            <li>Right-click on the exact venue location</li>
+                            <li>Click on the latitude/longitude numbers that appear</li>
+                            <li>Copy and paste into the Decimal Degrees fields above</li>
+                        </ol>
+                        <div class="alert alert-warning small">
+                            <i class="fas fa-exclamation-triangle me-1"></i>
+                            <strong>Note:</strong> Google Maps may require a Google account login in some environments. 
+                            Use OpenStreetMap (Method 1) for unrestricted access.
+                        </div>
+                        
+                        <hr>
+                        
+                        <h6>Method 3: Using DMS Format (e.g., 19°16'4.8"N)</h6>
+                        <ol>
+                            <li>Enter Degrees, Minutes, Seconds in the DMS section</li>
+                            <li>Select Direction (N/S for latitude, E/W for longitude)</li>
+                            <li>Click "Convert to Decimal"</li>
+                        </ol>
+                        
+                        <hr>
+                        
+                        <h6>Method 4: Using Mobile Device</h6>
+                        <ol>
+                            <li>Stand at the venue entrance</li>
+                            <li>Click "Use My Current Location" button above</li>
+                            <li>The system will automatically capture coordinates</li>
+                        </ol>
+                        
+                        <hr>
+                        
+                        <h6>Common Coordinates:</h6>
+                        <table class="table table-sm">
+                            <tr><td>Mumbai</td><td>19°16'4.8"N, 72°52'39.7"E</td><td>19.0760° N, 72.8777° E</td></tr>
+                            <tr><td>Delhi</td><td>28°36'50.0"N, 77°12'32.4"E</td><td>28.6139° N, 77.2090° E</td></tr>
+                            <tr><td>Bangalore</td><td>12°58'17.8"N, 77°35'40.6"E</td><td>12.9716° N, 77.5946° E</td></tr>
+                            <tr><td>Chennai</td><td>13°04'57.7"N, 80°16'14.5"E</td><td>13.0827° N, 80.2707° E</td></tr>
+                            <tr><td>Kolkata</td><td>22°34'21.4"N, 88°21'50.0"E</td><td>22.5726° N, 88.3639° E</td></tr>
+                        </table>
+                        
+                        <div class="alert alert-success mt-3">
+                            <i class="fas fa-lightbulb me-2"></i>
+                            <strong>Pro Tip:</strong> OpenStreetMap works without any login or account!
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+        // Remove existing modal if any
+        const existingModal = document.getElementById('locationGuideModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        // Add modal to body
+        document.body.insertAdjacentHTML('beforeend', guideHtml);
+
+        // Show modal
+        const modal = new bootstrap.Modal(document.getElementById('locationGuideModal'));
+        modal.show();
+
+        // Remove modal from DOM when hidden
+        document.getElementById('locationGuideModal').addEventListener('hidden.bs.modal', function () {
+            this.remove();
+        });
+    }
+
+    // Show notification function
+    function showNotification(message, type) {
+        // Check if toast container exists
+        if ($('#toast-container').length === 0) {
+            $('body').append('<div id="toast-container" class="position-fixed bottom-0 end-0 p-3" style="z-index: 1100"></div>');
+        }
+
+        const toastId = 'toast-' + Date.now();
+        let bgClass = 'bg-success';
+        let icon = 'fa-check-circle';
+
+        if (type === 'danger') {
+            bgClass = 'bg-danger';
+            icon = 'fa-exclamation-circle';
+        } else if (type === 'info') {
+            bgClass = 'bg-info';
+            icon = 'fa-info-circle';
+        } else if (type === 'warning') {
+            bgClass = 'bg-warning';
+            icon = 'fa-exclamation-triangle';
+        }
+
+        const toastHtml = `
+            <div id="${toastId}" class="toast align-items-center text-white ${bgClass} border-0" role="alert" data-bs-autohide="true" data-bs-delay="3000">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="fas ${icon} me-2"></i>
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            </div>
+        `;
+
+        $('#toast-container').append(toastHtml);
+        const toast = new bootstrap.Toast($(`#${toastId}`));
+        toast.show();
+
+        // Remove toast after hidden
+        $(`#${toastId}`).on('hidden.bs.toast', function () {
+            $(this).remove();
+        });
+    }
+
+    // Auto-preview when decimal fields change
+    document.getElementById('venue_latitude').addEventListener('input', function () {
+        const lat = parseFloat(this.value);
+        const lng = parseFloat(document.getElementById('venue_longitude').value);
+        if (!isNaN(lat) && !isNaN(lng)) {
+            showPreview(lat, lng);
+            updateDMSFromDecimal(lat, lng);
+        }
+    });
+
+    document.getElementById('venue_longitude').addEventListener('input', function () {
+        const lat = parseFloat(document.getElementById('venue_latitude').value);
+        const lng = parseFloat(this.value);
+        if (!isNaN(lat) && !isNaN(lng)) {
+            showPreview(lat, lng);
+            updateDMSFromDecimal(lat, lng);
+        }
+    });
+
+    // Form validation before submit
+    document.querySelector('form').addEventListener('submit', function (e) {
+        const lat = document.getElementById('venue_latitude').value;
+        const lng = document.getElementById('venue_longitude').value;
+        const radius = document.getElementById('venue_radius').value;
+
+        // Validate coordinates format if provided
+        if (lat && lng) {
+            const latNum = parseFloat(lat);
+            const lngNum = parseFloat(lng);
+
+            if (isNaN(latNum) || latNum < -90 || latNum > 90) {
+                e.preventDefault();
+                showNotification('Invalid latitude! Must be between -90 and 90', 'danger');
+                return false;
+            }
+
+            if (isNaN(lngNum) || lngNum < -180 || lngNum > 180) {
+                e.preventDefault();
+                showNotification('Invalid longitude! Must be between -180 and 180', 'danger');
+                return false;
+            }
+        }
+
+        if (radius) {
+            const radiusNum = parseInt(radius);
+            if (isNaN(radiusNum) || radiusNum < 10 || radiusNum > 1000) {
+                e.preventDefault();
+                showNotification('Radius must be between 10 and 1000 meters', 'danger');
+                return false;
+            }
+        }
+    });
+</script>
+
+<!-- Include jQuery and Bootstrap JS -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+{% endblock %}

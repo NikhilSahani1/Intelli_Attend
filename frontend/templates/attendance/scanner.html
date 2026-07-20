@@ -1,0 +1,538 @@
+{% extends "base.html" %}
+
+{% block title %}QR Scanner{% endblock %}
+
+{% block extra_css %}
+<style>
+#scanner-container {
+    position: relative;
+    width: 100%;
+    max-width: 640px;
+    margin: 0 auto;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+#scanner-video {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.scanner-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, rgba(67, 97, 238, 0.1) 0%, transparent 100%);
+    pointer-events: none;
+}
+
+.scanner-frame {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 250px;
+    height: 250px;
+    border: 3px solid #4361ee;
+    border-radius: 20px;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+}
+
+.scanner-line {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: #4361ee;
+    animation: scan 2s linear infinite;
+}
+
+@keyframes scan {
+    0% { top: 0; }
+    50% { top: 100%; }
+    100% { top: 0; }
+}
+
+.list-group-item {
+    transition: all 0.3s ease;
+}
+
+.list-group-item:hover {
+    transform: translateX(5px);
+    background-color: #f8f9fa;
+}
+
+.btn {
+    transition: all 0.3s ease;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+.form-select:focus {
+    border-color: #4361ee;
+    box-shadow: 0 0 0 0.2rem rgba(67, 97, 238, 0.25);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-qrcode me-2"></i>QR Code Scanner
+                    </h4>
+                </div>
+                <div class="card-body p-4">
+                    
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+                    
+                    <!-- Event/Lecture Selection -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Select Event</label>
+                            <select class="form-select form-select-lg" id="eventSelect" required>
+                                <option value="">-- Choose an event --</option>
+                                {% if events %}
+                                    {% for event in events %}
+                                        <option value="{{ event.id }}" data-event-name="{{ event.name }}">
+                                            {{ event.name }} - {{ event.date }} ({{ event.venue }})
+                                        </option>
+                                    {% endfor %}
+                                {% else %}
+                                    <option value="" disabled>No upcoming events available</option>
+                                {% endif %}
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Select Lecture</label>
+                            <select class="form-select form-select-lg" id="lectureSelect" disabled required>
+                                <option value="">-- First select an event --</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Scanner Controls -->
+                    <div class="text-center mb-3">
+                        <button class="btn btn-primary btn-lg" id="startScannerBtn">
+                            <i class="fas fa-play me-2"></i>Start Scanner
+                        </button>
+                        <button class="btn btn-secondary btn-lg" id="stopScannerBtn" style="display: none;">
+                            <i class="fas fa-stop me-2"></i>Stop Scanner
+                        </button>
+                    </div>
+
+                    <!-- Scanner Container -->
+                    <div id="scanner-container" style="display: none;">
+                        <video id="scanner-video"></video>
+                        <div class="scanner-overlay"></div>
+                        <div class="scanner-frame">
+                            <div class="scanner-line"></div>
+                        </div>
+                    </div>
+
+                    <!-- Manual Entry -->
+                    <div class="text-center mt-4">
+                        <p class="text-muted">or</p>
+                        <button class="btn btn-outline-primary btn-lg" onclick="showManualEntry()">
+                            <i class="fas fa-keyboard me-2"></i>Manual Entry
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Scans -->
+            <div class="card mt-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-history me-2 text-primary"></i>
+                        Recent Scans
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="recentScans" class="list-group">
+                        <div class="list-group-item text-center text-muted">
+                            <i class="fas fa-qrcode fa-2x mb-2"></i>
+                            <p class="mb-0">No recent scans yet</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Manual Entry Modal -->
+<div class="modal fade" id="manualEntryModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Manual Attendance Entry</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Student ID or Email</label>
+                    <input type="text" class="form-control" id="manualStudentId" placeholder="Enter Student ID or Email">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Student Name (Optional)</label>
+                    <input type="text" class="form-control" id="manualStudentName" placeholder="Enter Student Name">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="markManualAttendance()">Mark Attendance</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Result Modal -->
+<div class="modal fade" id="resultModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" id="resultHeader">
+                <h5 class="modal-title">Scan Result</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center p-4" id="resultBody">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js"></script>
+<script>
+let codeReader;
+let scanning = false;
+let currentEventId = null;
+let currentLectureId = null;
+let currentLectureName = null;
+
+$(document).ready(function() {
+    // Event selection change handler
+    $('#eventSelect').on('change', function() {
+        const eventId = $(this).val();
+        const eventName = $(this).find('option:selected').data('event-name');
+        currentEventId = eventId;
+        
+        const lectureSelect = $('#lectureSelect');
+        
+        if (eventId) {
+            lectureSelect.prop('disabled', true);
+            lectureSelect.html('<option value="">Loading lectures...</option>');
+            
+            console.log('Fetching lectures for event:', eventId);
+            
+            $.ajax({
+                url: `/api/events/${eventId}/lectures`,
+                type: 'GET',
+                success: function(lectures) {
+                    console.log('Lectures received:', lectures);
+                    lectureSelect.empty();
+                    lectureSelect.append('<option value="">-- Select a lecture --</option>');
+                    
+                    if (lectures && lectures.length > 0) {
+                        $.each(lectures, function(i, lecture) {
+                            lectureSelect.append(`<option value="${lecture.id}" data-lecture-name="${lecture.name}">${lecture.name}</option>`);
+                        });
+                        lectureSelect.prop('disabled', false);
+                    } else {
+                        lectureSelect.append('<option value="" disabled>No lectures available</option>');
+                        lectureSelect.prop('disabled', true);
+                        alert('No lectures found for this event. Please create lectures first.');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error fetching lectures:', error);
+                    lectureSelect.html('<option value="">Error loading lectures</option>');
+                    lectureSelect.prop('disabled', true);
+                }
+            });
+        } else {
+            lectureSelect.html('<option value="">-- First select an event --</option>');
+            lectureSelect.prop('disabled', true);
+        }
+    });
+    
+    // Lecture selection change handler
+    $('#lectureSelect').on('change', function() {
+        currentLectureId = $(this).val();
+        currentLectureName = $(this).find('option:selected').data('lecture-name');
+        console.log('Selected lecture:', currentLectureId, currentLectureName);
+    });
+    
+    // Start scanner button
+    $('#startScannerBtn').on('click', function() {
+        startScanner();
+    });
+    
+    // Stop scanner button
+    $('#stopScannerBtn').on('click', function() {
+        stopScanner();
+    });
+});
+
+function startScanner() {
+    const eventId = $('#eventSelect').val();
+    const lectureId = $('#lectureSelect').val();
+    
+    console.log('Starting scanner with:', {eventId, lectureId});
+    
+    if (!eventId) {
+        showResult('error', 'Please select an event first');
+        return;
+    }
+    
+    if (!lectureId) {
+        showResult('error', 'Please select a lecture first');
+        return;
+    }
+    
+    $('#startScannerBtn').hide();
+    $('#stopScannerBtn').show();
+    $('#scanner-container').show();
+    
+    codeReader = new ZXing.BrowserMultiFormatReader();
+    
+    codeReader.listVideoInputDevices()
+        .then(videoInputDevices => {
+            console.log('Available cameras:', videoInputDevices);
+            if (videoInputDevices.length === 0) {
+                showResult('error', 'No cameras found');
+                stopScanner();
+                return;
+            }
+            
+            // Prefer back camera
+            const backCamera = videoInputDevices.find(device => 
+                device.label.toLowerCase().includes('back') || 
+                device.label.toLowerCase().includes('environment')
+            );
+            const deviceId = backCamera ? backCamera.deviceId : videoInputDevices[0].deviceId;
+            
+            codeReader.decodeFromVideoDevice(deviceId, 'scanner-video', (result, err) => {
+                if (result) {
+                    console.log('QR Code scanned:', result.text);
+                    handleScan(result.text);
+                }
+                if (err && !(err instanceof ZXing.NotFoundException)) {
+                    console.error('Scan error:', err);
+                }
+            });
+        })
+        .catch(err => {
+            console.error('Camera error:', err);
+            showResult('error', 'Error accessing camera: ' + err.message);
+            stopScanner();
+        });
+}
+
+function stopScanner() {
+    if (codeReader) {
+        codeReader.reset();
+        codeReader = null;
+    }
+    scanning = false;
+    $('#startScannerBtn').show();
+    $('#stopScannerBtn').hide();
+    $('#scanner-container').hide();
+    const video = document.getElementById('scanner-video');
+    if (video && video.srcObject) {
+        video.srcObject.getTracks().forEach(track => track.stop());
+        video.srcObject = null;
+    }
+}
+
+function handleScan(qrData) {
+    console.log('Processing scan:', qrData);
+    stopScanner();
+    
+    const eventId = currentEventId;
+    const lectureId = currentLectureId;
+    const lectureName = currentLectureName;
+    
+    if (!eventId || !lectureId) {
+        showResult('error', 'Event or lecture not selected');
+        return;
+    }
+    
+    processAttendance(qrData, eventId, lectureId, lectureName);
+}
+
+function processAttendance(qrData, eventId, lectureId, lectureName, faceVerified = true) {
+    console.log('📤 Sending attendance request:', {
+        qrData: qrData,
+        eventId: eventId,
+        lectureId: lectureId,
+        lectureName: lectureName,
+        faceVerified: faceVerified
+    });
+    
+    $.ajax({
+        url: '/attendance/mark',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            qr_data: qrData,
+            event_id: eventId,
+            lecture_id: lectureId,
+            lecture_name: lectureName,
+            face_verified: faceVerified
+        }),
+        success: function(result) {
+            console.log('✅ Success:', result);
+            if (result.success) {
+                showResult('success', result.message);
+                addToRecentScans(result.attendance || {
+                    user_name: extractUserIdFromQR(qrData),
+                    event_name: $('#eventSelect option:selected').text().split(' - ')[0],
+                    lecture_name: lectureName
+                });
+            } else {
+                showResult('error', result.message || 'Failed to mark attendance');
+            }
+        },
+        error: function(xhr) {
+            console.error('❌ Error:', xhr);
+            let errorMsg = 'Failed to mark attendance';
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                errorMsg = xhr.responseJSON.message;
+            }
+            showResult('error', errorMsg);
+        }
+    });
+}
+
+function showManualEntry() {
+    $('#manualStudentId').val('');
+    $('#manualStudentName').val('');
+    $('#manualEntryModal').modal('show');
+}
+
+function markManualAttendance() {
+    const studentId = $('#manualStudentId').val();
+    const studentName = $('#manualStudentName').val();
+    const eventId = currentEventId;
+    const lectureId = currentLectureId;
+    const lectureName = currentLectureName;
+    
+    if (!eventId || !lectureId) {
+        showResult('error', 'Please select event and lecture first');
+        $('#manualEntryModal').modal('hide');
+        return;
+    }
+    
+    if (!studentId) {
+        alert('Please enter Student ID or Email');
+        return;
+    }
+    
+    const qrData = studentName ? `${studentId}|${studentName}` : studentId;
+    
+    $('#manualEntryModal').modal('hide');
+    processAttendance(qrData, eventId, lectureId, lectureName, true);
+}
+
+function showResult(type, message) {
+    const modal = new bootstrap.Modal(document.getElementById('resultModal'));
+    const header = document.getElementById('resultHeader');
+    const body = document.getElementById('resultBody');
+    
+    if (type === 'success') {
+        header.className = 'modal-header bg-success text-white';
+        body.innerHTML = `
+            <i class="fas fa-check-circle fa-4x text-success mb-3"></i>
+            <h5>Success!</h5>
+            <p class="mb-0">${message}</p>
+        `;
+    } else {
+        header.className = 'modal-header bg-danger text-white';
+        body.innerHTML = `
+            <i class="fas fa-exclamation-circle fa-4x text-danger mb-3"></i>
+            <h5>Error!</h5>
+            <p class="mb-0">${message}</p>
+        `;
+    }
+    
+    modal.show();
+}
+
+function addToRecentScans(attendance) {
+    const container = $('#recentScans');
+    
+    if (container.children().length === 1 && container.find('.fa-qrcode').length) {
+        container.empty();
+    }
+    
+    const scanHtml = `
+        <div class="list-group-item list-group-item-action">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="mb-1 fw-bold">${attendance.user_name || 'Student'}</h6>
+                    <small class="text-muted">
+                        <i class="fas fa-calendar-alt me-1"></i>${attendance.event_name || 'Event'} 
+                        <i class="fas fa-book ms-2 me-1"></i>${attendance.lecture_name || 'Lecture'}
+                    </small>
+                </div>
+                <div class="text-end">
+                    <span class="badge bg-success">✓ Verified</span>
+                    <br>
+                    <small class="text-muted">${new Date().toLocaleTimeString()}</small>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    container.prepend(scanHtml);
+    
+    while (container.children().length > 10) {
+        container.children().last().remove();
+    }
+}
+
+function extractUserIdFromQR(qrData) {
+    try {
+        const data = JSON.parse(qrData);
+        return data.user_name || data.name || data.user_id || 'Student';
+    } catch {
+        if (qrData.includes('|')) {
+            return qrData.split('|')[1] || qrData.split('|')[0];
+        }
+        return qrData.substring(0, 20);
+    }
+}
+
+window.addEventListener('beforeunload', function() {
+    if (codeReader) {
+        codeReader.reset();
+    }
+});
+</script>
+{% endblock %}

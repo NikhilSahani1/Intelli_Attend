@@ -1,0 +1,763 @@
+{% extends "base.html" %}
+
+{% block title %}User Dashboard - Intelligent Attendance System{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dashboard-wrapper {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: calc(100vh - 76px);
+        padding: 30px 0;
+    }
+    
+    .welcome-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border: none;
+        border-radius: 30px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        animation: slideDown 0.6s ease-out;
+    }
+    
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .welcome-avatar {
+        width: 80px;
+        height: 80px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 2.5rem;
+        box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    }
+    
+    .stat-card {
+        border: none;
+        border-radius: 20px;
+        color: white;
+        padding: 20px;
+        transition: all 0.3s;
+        animation: fadeInUp 0.6s ease-out;
+        animation-fill-mode: both;
+    }
+    
+    .stat-card:nth-child(1) { animation-delay: 0.1s; }
+    .stat-card:nth-child(2) { animation-delay: 0.2s; }
+    .stat-card:nth-child(3) { animation-delay: 0.3s; }
+    .stat-card:nth-child(4) { animation-delay: 0.4s; }
+    
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+    }
+    
+    .stat-card .stat-icon {
+        font-size: 2.5rem;
+        opacity: 0.8;
+    }
+    
+    .stat-card .stat-label {
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        opacity: 0.9;
+        margin-bottom: 5px;
+    }
+    
+    .stat-card .stat-value {
+        font-size: 2.2rem;
+        font-weight: 700;
+        margin: 0;
+        line-height: 1.2;
+    }
+    
+    .bg-gradient-primary { background: linear-gradient(135deg, #667eea, #764ba2); }
+    .bg-gradient-success { background: linear-gradient(135deg, #2ecc71, #27ae60); }
+    .bg-gradient-info { background: linear-gradient(135deg, #3498db, #2980b9); }
+    .bg-gradient-warning { background: linear-gradient(135deg, #f1c40f, #e67e22); }
+    
+    .section-card {
+        border: none;
+        border-radius: 25px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        transition: all 0.3s;
+        height: 100%;
+        background: white;
+    }
+    
+    .section-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+    }
+    
+    .section-header {
+        background: linear-gradient(135deg, #f8f9fa, #ffffff);
+        padding: 20px 25px;
+        border-bottom: 2px solid #e9ecef;
+    }
+    
+    .section-header h5 {
+        margin: 0;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+    
+    .section-header i {
+        color: #667eea;
+    }
+    
+    .event-item {
+        padding: 15px 25px;
+        border-bottom: 1px solid #e9ecef;
+        transition: all 0.3s;
+        animation: fadeIn 0.5s ease-out;
+    }
+    
+    .event-item:hover {
+        background: linear-gradient(135deg, #f8f9fa, #ffffff);
+        transform: translateX(5px);
+    }
+    
+    .event-item:last-child {
+        border-bottom: none;
+    }
+    
+    .event-title {
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 5px;
+    }
+    
+    .event-meta {
+        font-size: 0.9rem;
+        color: #6c757d;
+    }
+    
+    .event-meta i {
+        width: 16px;
+        color: #667eea;
+    }
+    
+    .badge-registered {
+        background: linear-gradient(135deg, #2ecc71, #27ae60);
+        color: white;
+        padding: 8px 15px;
+        border-radius: 50px;
+        font-weight: 500;
+    }
+    
+    .btn-register {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border: none;
+        padding: 8px 20px;
+        border-radius: 50px;
+        font-weight: 500;
+        transition: all 0.3s;
+    }
+    
+    .btn-register:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        color: white;
+    }
+    
+    .attendance-table {
+        margin: 0;
+    }
+    
+    .attendance-table th {
+        border-top: none;
+        color: #6c757d;
+        font-weight: 600;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .attendance-table td {
+        vertical-align: middle;
+        padding: 12px;
+    }
+    
+    .badge-verified {
+        background: linear-gradient(135deg, #2ecc71, #27ae60);
+        color: white;
+        padding: 5px 10px;
+        border-radius: 50px;
+        font-size: 0.85rem;
+    }
+    
+    .badge-flagged {
+        background: linear-gradient(135deg, #f72585, #b5179e);
+        color: white;
+        padding: 5px 10px;
+        border-radius: 50px;
+        font-size: 0.85rem;
+    }
+    
+    .verification-item {
+        background: linear-gradient(135deg, #f8f9fa, #ffffff);
+        border-radius: 15px;
+        padding: 15px;
+        border-left: 4px solid;
+        transition: all 0.3s;
+    }
+    
+    .verification-item:hover {
+        transform: translateX(5px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+    
+    .verification-item.verified {
+        border-left-color: #2ecc71;
+    }
+    
+    .verification-item.pending {
+        border-left-color: #f1c40f;
+    }
+    
+    .verification-item.rejected {
+        border-left-color: #e74c3c;
+        opacity: 0.7;
+    }
+    
+    .empty-state {
+        padding: 40px 20px;
+        text-align: center;
+        color: #6c757d;
+    }
+    
+    .empty-state i {
+        font-size: 3rem;
+        margin-bottom: 15px;
+        opacity: 0.5;
+    }
+    
+    .view-all-link {
+        color: #667eea;
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.3s;
+    }
+    
+    .view-all-link:hover {
+        color: #764ba2;
+        transform: translateX(5px);
+    }
+    
+    .floating-stats {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        z-index: 1000;
+    }
+    
+    .quick-help {
+        width: 50px;
+        height: 50px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.5rem;
+        cursor: pointer;
+        box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        transition: all 0.3s;
+        animation: pulse 2s infinite;
+    }
+    
+    .quick-help:hover {
+        transform: scale(1.1);
+    }
+    
+    @keyframes pulse {
+        0% { box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4); }
+        50% { box-shadow: 0 5px 30px rgba(102, 126, 234, 0.8); }
+        100% { box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4); }
+    }
+    
+    /* Photo Gallery Styles */
+    .photo-gallery-img {
+        width: 100%;
+        height: 150px;
+        object-fit: cover;
+        border-radius: 10px;
+        transition: transform 0.3s;
+    }
+    
+    .photo-gallery-img:hover {
+        transform: scale(1.05);
+    }
+    
+    .photo-card {
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        transition: all 0.3s;
+    }
+    
+    .photo-card:hover {
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    }
+    
+    .btn-view-photos {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 50px;
+        font-weight: 500;
+        transition: all 0.3s;
+    }
+    
+    .btn-view-photos:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-wrapper">
+    <div class="container">
+        <!-- Welcome Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="welcome-card p-4">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center">
+                            <div class="welcome-avatar me-4">
+                                <i class="fas fa-user-circle"></i>
+                            </div>
+                            <div>
+                                <h2 class="mb-2">Welcome back, {{ user.name }}!</h2>
+                                <div class="d-flex align-items-center flex-wrap gap-3">
+                                    <span class="badge bg-light text-dark p-2">
+                                        <i class="fas fa-id-card me-2 text-primary"></i>
+                                        ID: {{ user.moodle_id }}
+                                    </span>
+                                    
+                                    <!-- Verification Status Badge -->
+                                    {% if user.verified %}
+                                        <span class="badge bg-success p-2">
+                                            <i class="fas fa-check-circle me-1"></i>Verified
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-warning p-2">
+                                            <i class="fas fa-clock me-1"></i>Pending Verification
+                                        </span>
+                                    {% endif %}
+                                    
+                                    <span class="badge bg-info p-2">
+                                        <i class="fas fa-calendar me-1"></i>
+                                        Member since {{ user.created_at[:10] if user.created_at else 'N/A' }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Face Enrollment Button -->
+                        <div>
+                            {% if has_face %}
+                                <div class="text-end">
+                                    <span class="badge bg-success p-3">
+                                        <i class="fas fa-check-circle me-2"></i>
+                                        Face Enrolled
+                                    </span>
+                                    <small class="d-block text-muted mt-1">
+                                        <i class="fas fa-smile"></i> Biometric active
+                                    </small>
+                                    <!-- View Photos Button -->
+                                    <button onclick="viewMyPhotos()" class="btn btn-view-photos mt-2">
+                                        <i class="fas fa-images me-2"></i>View My Photos
+                                    </button>
+                                </div>
+                            {% else %}
+                                <a href="/face-enrollment" class="btn btn-primary btn-lg pulse-button">
+                                    <i class="fas fa-camera me-2"></i>
+                                    Enroll Face
+                                </a>
+                                <small class="d-block text-center text-muted mt-2">
+                                    <i class="fas fa-info-circle"></i> Required for attendance
+                                </small>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="row g-4 mb-4">
+            <div class="col-md-3">
+                <div class="stat-card bg-gradient-primary">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="stat-label">Registered Events</div>
+                            <div class="stat-value">{{ stats.registered_events|default(0) }}</div>
+                            <small class="opacity-75">Total registrations</small>
+                        </div>
+                        <i class="fas fa-calendar-check stat-icon"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="stat-card bg-gradient-success">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="stat-label">Attendance</div>
+                            <div class="stat-value">{{ stats.total_attendance|default(0) }}</div>
+                            <small class="opacity-75">Total attended</small>
+                        </div>
+                        <i class="fas fa-clock stat-icon"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="stat-card bg-gradient-info">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="stat-label">Upcoming Events</div>
+                            <div class="stat-value">{{ upcoming_events|length }}</div>
+                            <small class="opacity-75">Next 7 days</small>
+                        </div>
+                        <i class="fas fa-calendar-alt stat-icon"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="stat-card bg-gradient-warning">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="stat-label">Face Enrollment</div>
+                            <div class="stat-value">
+                                {% if has_face %}
+                                    <span class="text-white">Enrolled</span>
+                                {% else %}
+                                    <span class="text-white-50">Pending</span>
+                                {% endif %}
+                            </div>
+                            <small class="opacity-75">Biometric status</small>
+                        </div>
+                        <i class="fas fa-camera stat-icon"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Upcoming Events -->
+            <div class="col-lg-6 mb-4">
+                <div class="section-card">
+                    <div class="section-header d-flex justify-content-between align-items-center">
+                        <h5>
+                            <i class="fas fa-calendar-alt me-2"></i>
+                            Upcoming Events
+                        </h5>
+                        <span class="badge bg-primary">{{ upcoming_events|length }} Events</span>
+                    </div>
+                    <div class="card-body p-0">
+                        {% if upcoming_events %}
+                            {% for event in upcoming_events %}
+                                <div class="event-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="event-title">{{ event.name }}</h6>
+                                        <div class="event-meta">
+                                            <span class="me-3">
+                                                <i class="fas fa-map-marker-alt me-1"></i>{{ event.venue|default('TBD') }}
+                                            </span>
+                                            <span>
+                                                <i class="fas fa-calendar me-1"></i>{{ event.date }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        {% if event.registered %}
+                                            <span class="badge-registered">
+                                                <i class="fas fa-check-circle me-1"></i>Registered
+                                            </span>
+                                        {% else %}
+                                            <a href="{{ url_for('register_event', event_id=event.id) }}" 
+                                               class="btn-register">
+                                                <i class="fas fa-plus-circle me-1"></i>Register
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="empty-state">
+                                <i class="fas fa-calendar-times"></i>
+                                <h6>No Upcoming Events</h6>
+                                <p class="mb-0">Check back later for new events</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="card-footer bg-white text-end py-3">
+                        <a href="{{ url_for('events') }}" class="view-all-link">
+                            View All Events <i class="fas fa-arrow-right ms-1"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Attendance -->
+            <div class="col-lg-6 mb-4">
+                <div class="section-card">
+                    <div class="section-header d-flex justify-content-between align-items-center">
+                        <h5>
+                            <i class="fas fa-history me-2"></i>
+                            Recent Attendance
+                        </h5>
+                        <span class="badge bg-info">{{ recent_attendance|length }} Records</span>
+                    </div>
+                    <div class="card-body p-0">
+                        {% if recent_attendance %}
+                            <div class="table-responsive">
+                                <table class="table attendance-table mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Event</th>
+                                            <th>Lecture</th>
+                                            <th>Date</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for att in recent_attendance %}
+                                            <tr>
+                                                <td>{{ att.event_name }}</td>
+                                                <td>{{ att.lecture_name }}</td>
+                                                <td>{{ att.timestamp[:10] if att.timestamp else 'N/A' }}</td>
+                                                <td>
+                                                    {% if att.fraud_score > 0.6 %}
+                                                        <span class="badge-flagged">
+                                                            <i class="fas fa-exclamation-triangle me-1"></i>Flagged
+                                                        </span>
+                                                    {% else %}
+                                                        <span class="badge-verified">
+                                                            <i class="fas fa-check-circle me-1"></i>Verified
+                                                        </span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div class="empty-state">
+                                <i class="fas fa-clock"></i>
+                                <h6>No Attendance Records</h6>
+                                <p class="mb-0">Your attendance history will appear here</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="card-footer bg-white text-end py-3">
+                        <a href="{{ url_for('my_attendance') }}" class="view-all-link">
+                            View Full History <i class="fas fa-arrow-right ms-1"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Verification Status Section -->
+        <div class="row">
+            <div class="col-12">
+                <div class="section-card">
+                    <div class="section-header">
+                        <h5>
+                            <i class="fas fa-id-card me-2"></i>
+                            ID Verification Status
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            {% for item in verification_status %}
+                                <div class="col-md-6 col-lg-4 mb-3">
+                                    <div class="verification-item {{ 'verified' if item.status == 'VERIFIED' else 'pending' }}">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <h6 class="mb-2">{{ item.id_type }}</h6>
+                                                <p class="mb-2">
+                                                    <code>{{ item.id_number }}</code>
+                                                </p>
+                                                <div>
+                                                    <span class="badge bg-{{ 'success' if item.status == 'VERIFIED' else 'warning' }}">
+                                                        {{ item.status }}
+                                                    </span>
+                                                </div>
+                                                {% if item.verified_at and item.verified_at != 'N/A' %}
+                                                    <small class="text-muted d-block mt-2">
+                                                        <i class="fas fa-clock me-1"></i>
+                                                        Verified: {{ item.verified_at }}
+                                                    </small>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% else %}
+                                <div class="col-12">
+                                    <div class="empty-state">
+                                        <i class="fas fa-id-card"></i>
+                                        <h6>No Verification Information</h6>
+                                        <p class="mb-0">Your verification status will appear here</p>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Help Button -->
+    <div class="floating-stats">
+        <div class="quick-help" data-bs-toggle="tooltip" title="Need Help?">
+            <i class="fas fa-question"></i>
+        </div>
+    </div>
+</div>
+
+<!-- Photo Modal for viewing enrolled photos -->
+<div class="modal fade" id="photoModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-gradient-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-images me-2"></i>My Enrolled Face Photos
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="photoModalBody">
+                <div class="text-center py-4">
+                    <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
+                    <p class="mt-2">Loading your photos...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <a href="/face-enrollment/enhanced" class="btn btn-primary">
+                    <i class="fas fa-camera me-2"></i>Add More Photos
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Initialize tooltips
+document.addEventListener('DOMContentLoaded', function() {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function(tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    });
+});
+
+// Smooth animations for stats
+document.querySelectorAll('.stat-card').forEach((card, index) => {
+    card.style.animation = `fadeInUp 0.6s ease-out ${index * 0.1}s both`;
+});
+
+// Function to view enrolled photos
+function viewMyPhotos() {
+    // Show loading in modal
+    document.getElementById('photoModalBody').innerHTML = `
+        <div class="text-center py-4">
+            <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
+            <p class="mt-2">Loading your photos...</p>
+        </div>
+    `;
+    
+    // Show the modal
+    var photoModal = new bootstrap.Modal(document.getElementById('photoModal'));
+    photoModal.show();
+    
+    // Fetch photos from API
+    fetch('/api/face/get-enrolled-photos')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.photos && data.photos.length > 0) {
+                let html = '<div class="row">';
+                data.photos.forEach(photo => {
+                    // Extract angle from filename if available
+                    let angle = 'Face Photo';
+                    if (photo.filename.includes('Front')) angle = 'Front View';
+                    else if (photo.filename.includes('Left')) angle = 'Left View';
+                    else if (photo.filename.includes('Right')) angle = 'Right View';
+                    else if (photo.filename.includes('Smile')) angle = 'Smiling';
+                    else if (photo.filename.includes('Neutral')) angle = 'Neutral';
+                    
+                    html += `
+                        <div class="col-md-4 col-sm-6 mb-3">
+                            <div class="photo-card">
+                                <img src="${photo.url}" class="photo-gallery-img" alt="Face Photo">
+                                <div class="p-2 text-center bg-light">
+                                    <small class="text-muted">
+                                        <i class="fas fa-camera me-1"></i>${angle}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                document.getElementById('photoModalBody').innerHTML = html;
+            } else {
+                document.getElementById('photoModalBody').innerHTML = `
+                    <div class="text-center py-4">
+                        <i class="fas fa-camera fa-3x text-muted mb-3"></i>
+                        <p>No enrolled photos found.</p>
+                        <a href="/face-enrollment/enhanced" class="btn btn-primary btn-sm">
+                            <i class="fas fa-camera me-2"></i>Enroll Face Now
+                        </a>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('photoModalBody').innerHTML = `
+                <div class="text-center py-4 text-danger">
+                    <i class="fas fa-exclamation-circle fa-3x mb-3"></i>
+                    <p>Error loading photos. Please try again.</p>
+                </div>
+            `;
+        });
+}
+</script>
+{% endblock %}

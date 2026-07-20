@@ -1,0 +1,983 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - Intelligent Attendance System{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ===== Consistent with System Design ===== */
+:root {
+    --primary: #667eea;
+    --secondary: #764ba2;
+    --success: #48c774;
+    --danger: #ff4757;
+    --warning: #ffa502;
+    --dark: #2d3748;
+    --light: #f7fafc;
+}
+
+.admin-wrapper {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: calc(100vh - 76px);
+    padding: 30px 0;
+    position: relative;
+    overflow: hidden;
+}
+    
+    /* ===== Welcome Card ===== */
+    .welcome-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border-radius: 30px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        animation: slideDown 0.6s ease-out;
+    }
+    
+    .admin-avatar {
+        width: 80px;
+        height: 80px;
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 2.5rem;
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+    }
+    
+    .pending-badge {
+        background: linear-gradient(135deg, var(--warning), #f3722c);
+        color: white;
+        padding: 10px 25px;
+        border-radius: 50px;
+        font-weight: 600;
+        box-shadow: 0 5px 15px rgba(255, 165, 2, 0.3);
+    }
+    
+    /* ===== Stats Cards - All Same Size ===== */
+    .stat-card {
+        background: white;
+        border-radius: 20px;
+        padding: 20px;
+        box-shadow: 0 10px 30px -15px rgba(0, 0, 0, 0.2);
+        transition: all 0.3s;
+        position: relative;
+        overflow: hidden;
+        border: 1px solid #e9ecef;
+        animation: fadeInRight 0.5s ease-out;
+        animation-fill-mode: both;
+        height: 130px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, var(--primary), var(--secondary));
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+    
+    .stat-card:hover::before {
+        opacity: 1;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 20px 40px -15px var(--primary);
+    }
+    
+    .stat-card h6 {
+        color: #6c757d;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 8px;
+    }
+    
+    .stat-card h2 {
+        color: var(--dark);
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 5px;
+        line-height: 1.2;
+    }
+    
+    .stat-card small {
+        color: #6c757d;
+        font-size: 0.7rem;
+    }
+    
+    .stat-icon {
+        position: absolute;
+        right: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        opacity: 0.15;
+    }
+    
+    .stat-icon i {
+        font-size: 3rem;
+    }
+    
+    /* Stat Card Variants */
+    .stat-primary { border-left: 4px solid var(--primary); }
+    .stat-success { border-left: 4px solid var(--success); }
+    .stat-warning { border-left: 4px solid var(--warning); }
+    .stat-danger { border-left: 4px solid var(--danger); }
+    .stat-info { border-left: 4px solid #17a2b8; }
+    .stat-secondary { border-left: 4px solid #6c757d; }
+    
+    /* ===== Chart Cards ===== */
+    .chart-card {
+        background: white;
+        border-radius: 25px;
+        box-shadow: 0 10px 30px -15px rgba(0, 0, 0, 0.2);
+        overflow: hidden;
+        border: 1px solid #e9ecef;
+        transition: all 0.3s;
+        height: 100%;
+    }
+    
+    .chart-card:hover {
+        box-shadow: 0 20px 40px -15px var(--primary);
+    }
+    
+    .chart-header {
+        background: #f8f9fa;
+        padding: 15px 20px;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .chart-header h5 {
+        color: var(--dark);
+        margin: 0;
+        font-weight: 600;
+        font-size: 1rem;
+    }
+    
+    .chart-header h5 i {
+        color: var(--primary);
+        margin-right: 8px;
+    }
+    
+    .chart-body {
+        padding: 20px;
+        background: white;
+    }
+    
+    /* ===== Fraud Alerts ===== */
+    .fraud-alert {
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 10px;
+        transition: all 0.3s;
+    }
+    
+    .fraud-alert:hover {
+        background: white;
+        transform: translateX(5px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    
+    .fraud-alert.critical { border-left: 4px solid var(--danger); }
+    .fraud-alert.high { border-left: 4px solid var(--warning); }
+    .fraud-alert.medium { border-left: 4px solid #ffc107; }
+    
+    .fraud-alert h6 {
+        color: var(--dark);
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 3px;
+    }
+    
+    .fraud-alert small {
+        color: #6c757d;
+        font-size: 0.7rem;
+    }
+    
+    .fraud-score {
+        padding: 3px 10px;
+        border-radius: 50px;
+        font-weight: 600;
+        font-size: 0.8rem;
+    }
+    
+    .fraud-score.critical { background: var(--danger); color: white; }
+    .fraud-score.high { background: var(--warning); color: white; }
+    .fraud-score.medium { background: #ffc107; color: var(--dark); }
+    
+    /* ===== Quick Actions ===== */
+    .quick-action-card {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        border: none;
+        border-radius: 15px;
+        padding: 15px;
+        text-align: center;
+        color: white;
+        text-decoration: none;
+        transition: all 0.3s;
+        display: block;
+        position: relative;
+        height: 100%;
+        min-height: 110px;
+    }
+    
+    .quick-action-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 30px -10px rgba(102, 126, 234, 0.5);
+        color: white;
+    }
+    
+    .quick-action-card i {
+        font-size: 2rem;
+        color: white;
+        margin-bottom: 8px;
+        display: block;
+    }
+    
+    .quick-action-card h6 {
+        font-weight: 600;
+        margin-bottom: 5px;
+        font-size: 0.9rem;
+        color: white;
+    }
+    
+    .quick-action-card small {
+        color: rgba(255, 255, 255, 0.85);
+        font-size: 0.7rem;
+        display: block;
+    }
+    
+    .quick-action-card .badge {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        background: var(--danger);
+        color: white;
+        font-size: 0.7rem;
+        padding: 3px 8px;
+        border-radius: 20px;
+        animation: pulse 1.5s infinite;
+    }
+    
+    /* ===== Recent Attendance Table ===== */
+    .attendance-table {
+        margin-bottom: 0;
+    }
+    
+    .attendance-table thead th {
+        background: #f8f9fa;
+        color: #6c757d;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.7rem;
+        letter-spacing: 1px;
+        padding: 12px;
+        border-bottom: 2px solid #e9ecef;
+    }
+    
+    .attendance-table tbody td {
+        padding: 12px;
+        vertical-align: middle;
+        border-bottom: 1px solid #e9ecef;
+        color: #495057;
+        font-size: 0.85rem;
+    }
+    
+    .attendance-table tbody tr:hover {
+        background: #f8f9fa;
+    }
+    
+    .user-info strong {
+        color: var(--dark);
+        display: block;
+        font-size: 0.85rem;
+    }
+    
+    .user-info small {
+        color: #6c757d;
+        font-size: 0.7rem;
+    }
+    
+    .event-info span {
+        color: var(--dark);
+        font-weight: 500;
+        font-size: 0.85rem;
+    }
+    
+    .event-info small {
+        color: #6c757d;
+        font-size: 0.7rem;
+    }
+    
+    .status-badge {
+        padding: 4px 10px;
+        border-radius: 50px;
+        font-size: 0.7rem;
+        font-weight: 500;
+        display: inline-block;
+    }
+    
+    .status-badge.verified {
+        background: #d4edda;
+        color: #155724;
+    }
+    
+    .status-badge.flagged {
+        background: #f8d7da;
+        color: #721c24;
+    }
+    
+    /* ===== Floating Alert ===== */
+    .floating-alert {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        z-index: 1000;
+    }
+    
+    .alert-bell {
+        width: 50px;
+        height: 50px;
+        background: linear-gradient(135deg, var(--danger), #c9184a);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.5rem;
+        cursor: pointer;
+        box-shadow: 0 10px 30px rgba(255, 71, 87, 0.4);
+        transition: all 0.3s;
+        position: relative;
+    }
+    
+    .alert-bell:hover {
+        transform: scale(1.1);
+    }
+    
+    .alert-bell .count {
+        position: absolute;
+        top: -5px;
+        right: -5px;
+        background: var(--warning);
+        color: white;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.7rem;
+        font-weight: 600;
+        animation: pulse 1s infinite;
+    }
+    
+    /* ===== Animations ===== */
+    @keyframes slideDown {
+        from { opacity: 0; transform: translateY(-30px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    @keyframes fadeInRight {
+        from { opacity: 0; transform: translateX(30px); }
+        to { opacity: 1; transform: translateX(0); }
+    }
+    
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+        100% { transform: scale(1); }
+    }
+    
+    /* Animation delays */
+    .stat-card:nth-child(1) { animation-delay: 0.05s; }
+    .stat-card:nth-child(2) { animation-delay: 0.1s; }
+    .stat-card:nth-child(3) { animation-delay: 0.15s; }
+    .stat-card:nth-child(4) { animation-delay: 0.2s; }
+    .stat-card:nth-child(5) { animation-delay: 0.25s; }
+    .stat-card:nth-child(6) { animation-delay: 0.3s; }
+    
+    /* ===== Responsive ===== */
+    @media (max-width: 768px) {
+        .welcome-card .d-flex {
+            flex-direction: column;
+            text-align: center;
+        }
+        
+        .admin-avatar {
+            margin: 0 auto 20px;
+        }
+        
+        .pending-badge {
+            margin-top: 15px;
+        }
+        
+        .stat-card {
+            height: auto;
+            min-height: 110px;
+        }
+        
+        .quick-action-card {
+            min-height: 100px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-wrapper">
+    <div class="container-fluid px-4">
+        <!-- Welcome Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="welcome-card p-4">
+                    <div class="d-flex align-items-center justify-content-between flex-wrap">
+                        <div class="d-flex align-items-center">
+                            <div class="admin-avatar me-4">
+                                <i class="fas fa-user-shield"></i>
+                            </div>
+                            <div>
+                                <h2 class="mb-2" style="color: var(--dark);">Welcome back, Administrator</h2>
+                                <div class="d-flex flex-wrap gap-3">
+                                    <span style="color: #6c757d; font-size: 0.85rem;">
+                                        <i class="fas fa-calendar-alt me-2" style="color: var(--primary);"></i>
+                                        {{ login_time }}
+                                    </span>
+                                    <span style="color: #6c757d; font-size: 0.85rem;">
+                                        <i class="fas fa-clock me-2" style="color: var(--primary);"></i>
+                                        {{ current_time }}
+                                    </span>
+                                    <span style="color: #6c757d; font-size: 0.85rem;">
+                                        <i class="fas fa-globe me-2" style="color: var(--primary);"></i>
+                                        System Online
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3 mt-sm-0">
+                            <span class="pending-badge">
+                                <i class="fas fa-clock me-2"></i>
+                                Pending: {{ stats.pending_verifications|default(0) }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Cards - 2 Rows of 3 Columns (All Same Size) -->
+        <div class="row g-4 mb-4">
+            <div class="col-xl-4 col-md-6 col-sm-12">
+                <div class="stat-card stat-primary">
+                    <div class="stat-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <h6>ACTIVE USERS</h6>
+                    <h2>{{ stats.active_users }}</h2>
+                    <small>
+                        <i class="fas fa-arrow-up me-1" style="color: #28a745;"></i>
+                        +{{ stats.new_users_today }} today
+                    </small>
+                </div>
+            </div>
+            
+            <div class="col-xl-4 col-md-6 col-sm-12">
+                <div class="stat-card stat-success">
+                    <div class="stat-icon">
+                        <i class="fas fa-calendar-alt"></i>
+                    </div>
+                    <h6>ACTIVE EVENTS</h6>
+                    <h2>{{ stats.active_events }}</h2>
+                    <small>
+                        <i class="fas fa-archive me-1"></i>
+                        {{ stats.archived_events }} archived
+                    </small>
+                </div>
+            </div>
+            
+            <div class="col-xl-4 col-md-6 col-sm-12">
+                <div class="stat-card stat-info">
+                    <div class="stat-icon">
+                        <i class="fas fa-chalkboard-teacher"></i>
+                    </div>
+                    <h6>ACTIVE LECTURES</h6>
+                    <h2>{{ stats.active_lectures }}</h2>
+                    <small>Unique lectures</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-xl-4 col-md-6 col-sm-12">
+                <div class="stat-card stat-warning">
+                    <div class="stat-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <h6>TODAY'S ATTENDANCE</h6>
+                    <h2>{{ stats.today_attendance }}</h2>
+                    <small>
+                        <i class="fas fa-exclamation-triangle me-1" style="color: var(--warning);"></i>
+                        {{ stats.fraud_alerts_today }} alerts
+                    </small>
+                </div>
+            </div>
+            
+            <div class="col-xl-4 col-md-6 col-sm-12">
+                <div class="stat-card stat-danger">
+                    <div class="stat-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <h6>FRAUD SCORE</h6>
+                    <h2>{{ stats.avg_fraud_score }}%</h2>
+                    <small>Average risk level</small>
+                </div>
+            </div>
+            
+            <div class="col-xl-4 col-md-6 col-sm-12">
+                <div class="stat-card stat-secondary">
+                    <div class="stat-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h6>TOTAL ATTENDANCE</h6>
+                    <h2>{{ stats.total_attendance }}</h2>
+                    <small>All time records</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts and Fraud Alerts Row -->
+        <div class="row g-4 mb-4">
+            <div class="col-xl-8">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <ul class="nav nav-tabs-custom" id="dashboardTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="attendance-tab" data-bs-toggle="tab" 
+                                        data-bs-target="#attendance" type="button" role="tab">
+                                    <i class="fas fa-chart-line me-2"></i>Attendance Trend
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="fraud-tab" data-bs-toggle="tab" 
+                                        data-bs-target="#fraud" type="button" role="tab">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>Fraud Detection
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="chart-body">
+                        <div class="tab-content">
+                            <div class="tab-pane fade show active" id="attendance" role="tabpanel">
+                                <canvas id="attendanceChart" height="250"></canvas>
+                            </div>
+                            <div class="tab-pane fade" id="fraud" role="tabpanel">
+                                <canvas id="fraudChart" height="250"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fraud Alerts -->
+            <div class="col-xl-4">
+                <div class="chart-card h-100">
+                    <div class="chart-header d-flex justify-content-between align-items-center">
+                        <h5>
+                            <i class="fas fa-exclamation-triangle me-2" style="color: var(--danger);"></i>
+                            Fraud Alerts
+                        </h5>
+                        <a href="{{ url_for('fraud_alerts') }}" class="btn btn-sm" style="color: var(--primary); font-size: 0.75rem;">
+                            View All <i class="fas fa-arrow-right ms-1"></i>
+                        </a>
+                    </div>
+                    <div class="chart-body" style="max-height: 320px; overflow-y: auto;">
+                        {% if fraud_alerts %}
+                            {% for alert in fraud_alerts %}
+                                <div class="fraud-alert {{ alert.risk_level|lower }}">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <h6 class="mb-1">{{ alert.user_name }}</h6>
+                                            <small class="d-block text-muted">{{ alert.event_name }}</small>
+                                            <small class="text-muted">
+                                                <i class="fas fa-clock me-1"></i>{{ alert.timestamp[:16] }}
+                                            </small>
+                                        </div>
+                                        <span class="fraud-score {{ alert.risk_level|lower }}">
+                                            {{ "%.0f"|format(alert.fraud_score * 100) }}%
+                                        </span>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-center py-4">
+                                <i class="fas fa-check-circle fa-3x text-success mb-2"></i>
+                                <h6 class="mb-0">No Fraud Alerts</h6>
+                                <p class="text-muted small mb-0">All systems normal</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Attendance & Quick Actions -->
+        <div class="row g-4">
+            <!-- Recent Attendance -->
+            <div class="col-xl-6">
+                <div class="chart-card">
+                    <div class="chart-header d-flex justify-content-between align-items-center">
+                        <h5>
+                            <i class="fas fa-clock me-2" style="color: var(--primary);"></i>
+                            Recent Attendance
+                        </h5>
+                        <a href="{{ url_for('attendance_log') }}" class="btn btn-sm" style="color: var(--primary); font-size: 0.75rem;">
+                            View All <i class="fas fa-arrow-right ms-1"></i>
+                        </a>
+                    </div>
+                    <div class="chart-body p-0">
+                        <div class="table-responsive">
+                            <table class="table attendance-table mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>User</th>
+                                        <th>Event</th>
+                                        <th>Time</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for att in recent_attendance %}
+                                        <tr>
+                                            <td>
+                                                <div class="user-info">
+                                                    <strong>{{ att.user_name }}</strong>
+                                                    <small>{{ att.moodle_id }}</small>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="event-info">
+                                                    <span>{{ att.event_name }}</span>
+                                                    <small class="d-block text-muted">{{ att.lecture_name }}</small>
+                                                </div>
+                                            </td>
+                                            <td class="text-muted">{{ att.timestamp[:16] }}</td>
+                                            <td>
+                                                {% if att.fraud_score > 0.6 %}
+                                                    <span class="status-badge flagged">
+                                                        <i class="fas fa-exclamation-triangle me-1"></i>Flagged
+                                                    </span>
+                                                {% else %}
+                                                    <span class="status-badge verified">
+                                                        <i class="fas fa-check-circle me-1"></i>Verified
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions with Event Management -->
+            <div class="col-xl-6">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h5>
+                            <i class="fas fa-bolt me-2" style="color: var(--primary);"></i>
+                            Quick Actions
+                        </h5>
+                    </div>
+                    <div class="chart-body">
+                        <div class="row g-3">
+                            <!-- Event Management Section (Moved here) -->
+                            <div class="col-12">
+                                <div class="alert alert-primary py-2 mb-2">
+                                    <i class="fas fa-calendar-alt me-2"></i>
+                                    <strong>Event Management</strong>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-4 col-lg-3">
+                                <a href="{{ url_for('manage_events') }}" class="quick-action-card">
+                                    <i class="fas fa-calendar-alt"></i>
+                                    <h6>Manage Events</h6>
+                                    <small>Edit & Delete</small>
+                                </a>
+                            </div>
+                            <div class="col-6 col-md-4 col-lg-3">
+                                <a href="{{ url_for('create_event') }}" class="quick-action-card">
+                                    <i class="fas fa-calendar-plus"></i>
+                                    <h6>Create Event</h6>
+                                    <small>Schedule event</small>
+                                </a>
+                            </div>
+                            <div class="col-6 col-md-4 col-lg-3">
+                                <a href="{{ url_for('create_lecture') }}" class="quick-action-card">
+                                    <i class="fas fa-chalkboard-teacher"></i>
+                                    <h6>Create Lecture</h6>
+                                    <small>Add lecture</small>
+                                </a>
+                            </div>
+                            <div class="col-6 col-md-4 col-lg-3">
+                                <a href="{{ url_for('manage_lectures') }}" class="quick-action-card">
+                                    <i class="fas fa-list"></i>
+                                    <h6>Manage Lectures</h6>
+                                    <small>View lectures</small>
+                                </a>
+                            </div>
+                            
+                            <!-- Attendance & Verification Section -->
+                            <div class="col-12 mt-2">
+                                <div class="alert alert-success py-2 mb-2">
+                                    <i class="fas fa-user-check me-2"></i>
+                                    <strong>Attendance & Verification</strong>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-4 col-lg-3">
+                                <a href="{{ url_for('face_scanner') }}" class="quick-action-card">
+                                    <i class="fas fa-camera"></i>
+                                    <h6>Face Scanner</h6>
+                                    <small>Face attendance</small>
+                                </a>
+                            </div>
+                            <div class="col-6 col-md-4 col-lg-3">
+                                <a href="{{ url_for('verifications') }}" class="quick-action-card">
+                                    <i class="fas fa-check-double"></i>
+                                    <h6>Verify IDs</h6>
+                                    <small>Approve users</small>
+                                    {% if stats.pending_verifications > 0 %}
+                                        <span class="badge">{{ stats.pending_verifications }}</span>
+                                    {% endif %}
+                                </a>
+                            </div>
+                            <div class="col-6 col-md-4 col-lg-3">
+                                <a href="{{ url_for('manage_users') }}" class="quick-action-card">
+                                    <i class="fas fa-users"></i>
+                                    <h6>Manage Users</h6>
+                                    <small>User management</small>
+                                </a>
+                            </div>
+                            <div class="col-6 col-md-4 col-lg-3">
+                                <a href="{{ url_for('admin_face_management') }}" class="quick-action-card">
+                                    <i class="fas fa-id-card"></i>
+                                    <h6>Face Management</h6>
+                                    <small>Manage faces</small>
+                                </a>
+                            </div>
+                            
+                            <!-- Security & Reports Section -->
+                            <div class="col-12 mt-2">
+                                <div class="alert alert-warning py-2 mb-2">
+                                    <i class="fas fa-shield-alt me-2"></i>
+                                    <strong>Security & Reports</strong>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-4 col-lg-3">
+                                <a href="{{ url_for('security_logs') }}" class="quick-action-card">
+                                    <i class="fas fa-shield-alt"></i>
+                                    <h6>Security Logs</h6>
+                                    <small>Audit trail</small>
+                                </a>
+                            </div>
+                            <div class="col-6 col-md-4 col-lg-3">
+                                <a href="{{ url_for('fraud_alerts') }}" class="quick-action-card">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    <h6>Fraud Alerts</h6>
+                                    <small>View alerts</small>
+                                </a>
+                            </div>
+                            <div class="col-6 col-md-4 col-lg-3">
+                                <a href="{{ url_for('anomaly_report') }}" class="quick-action-card">
+                                    <i class="fas fa-brain"></i>
+                                    <h6>Anomaly Report</h6>
+                                    <small>Fraud detection</small>
+                                </a>
+                            </div>
+                            <div class="col-6 col-md-4 col-lg-3">
+                                <a href="{{ url_for('admin_reports') }}" class="quick-action-card">
+                                    <i class="fas fa-chart-pie"></i>
+                                    <h6>Reports</h6>
+                                    <small>Analytics</small>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Alert Bell -->
+    <div class="floating-alert">
+        <div class="alert-bell" data-bs-toggle="tooltip" title="{{ fraud_alerts|length }} New Alerts">
+            <i class="fas fa-bell"></i>
+            {% if fraud_alerts|length > 0 %}
+                <span class="count">{{ fraud_alerts|length }}</span>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function(tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    
+    // Attendance Chart
+    const ctx1 = document.getElementById('attendanceChart').getContext('2d');
+    new Chart(ctx1, {
+        type: 'line',
+        data: {
+            labels: {{ attendance_labels|tojson }},
+            datasets: [{
+                label: 'Attendance',
+                data: {{ attendance_data|tojson }},
+                borderColor: '#667eea',
+                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                borderWidth: 3,
+                tension: 0.4,
+                fill: true,
+                pointBackgroundColor: '#667eea',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointHoverBackgroundColor: '#fff',
+                pointHoverBorderColor: '#667eea',
+                pointHoverBorderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'white',
+                    titleColor: '#2d3748',
+                    bodyColor: '#6c757d',
+                    borderColor: '#667eea',
+                    borderWidth: 1
+                }
+            },
+            scales: {
+                y: { beginAtZero: true, grid: { color: '#e9ecef' }, ticks: { color: '#6c757d' } },
+                x: { grid: { display: false }, ticks: { color: '#6c757d' } }
+            }
+        }
+    });
+    
+    // Fraud Chart
+    const ctx2 = document.getElementById('fraudChart').getContext('2d');
+    new Chart(ctx2, {
+        type: 'bar',
+        data: {
+            labels: {{ fraud_labels|tojson }},
+            datasets: [{
+                label: 'High Risk',
+                data: {{ fraud_high_data|tojson }},
+                backgroundColor: '#ff4757',
+                borderRadius: 5
+            }, {
+                label: 'Medium Risk',
+                data: {{ fraud_medium_data|tojson }},
+                backgroundColor: '#ffa502',
+                borderRadius: 5
+            }, {
+                label: 'Low Risk',
+                data: {{ fraud_low_data|tojson }},
+                backgroundColor: '#48c774',
+                borderRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { color: '#6c757d', boxWidth: 10, font: { size: 10 } } },
+                tooltip: { backgroundColor: 'white', titleColor: '#2d3748', bodyColor: '#6c757d', borderColor: '#667eea', borderWidth: 1 }
+            },
+            scales: {
+                x: { stacked: true, grid: { display: false }, ticks: { color: '#6c757d', font: { size: 10 } } },
+                y: { stacked: true, beginAtZero: true, grid: { color: '#e9ecef' }, ticks: { color: '#6c757d', stepSize: 1 } }
+            }
+        }
+    });
+    
+    // Event Analytics Chart (Pie Chart)
+    const ctx3 = document.getElementById('eventAnalyticsChart').getContext('2d');
+    new Chart(ctx3, {
+        type: 'pie',
+        data: {
+            labels: {{ event_names|tojson if event_names else '["No Data"]'|tojson }},
+            datasets: [{
+                data: {{ event_attendance|tojson if event_attendance else '[0]'|tojson }},
+                backgroundColor: ['#667eea', '#48c774', '#ffa502', '#ff4757', '#17a2b8', '#6c757d'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: { position: 'right', labels: { font: { size: 10 } } }
+            }
+        }
+    });
+    
+    // Risk Distribution Chart
+    const ctx4 = document.getElementById('riskDistributionChart').getContext('2d');
+    new Chart(ctx4, {
+        type: 'doughnut',
+        data: {
+            labels: ['High Risk', 'Medium Risk', 'Low Risk'],
+            datasets: [{
+                data: [{{ fraud_high_data|sum|default(0) }}, {{ fraud_medium_data|sum|default(0) }}, {{ fraud_low_data|sum|default(0) }}],
+                backgroundColor: ['#ff4757', '#ffa502', '#48c774'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: { position: 'bottom', labels: { font: { size: 10 } } }
+            }
+        }
+    });
+});
+
+// Real-time updates
+function checkUpdates() {
+    fetch('/admin/pending-verifications/count')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const badge = document.querySelector('.pending-badge');
+                if (badge) {
+                    badge.innerHTML = `<i class="fas fa-clock me-2"></i>Pending: ${data.count}`;
+                }
+            }
+        })
+        .catch(error => console.log('Update check failed:', error));
+}
+
+setInterval(checkUpdates, 30000);
+</script>
+{% endblock %}

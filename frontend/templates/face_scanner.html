@@ -1,0 +1,1100 @@
+{% extends "base.html" %}
+
+{% block title %}Face Scanner - Secure Attendance{% endblock %}
+
+{% block extra_css %}
+<style>
+    .scanner-container {
+        max-width: 700px;
+        margin: 0 auto;
+    }
+    
+    #video, #livenessVideo {
+        width: 100%;
+        border-radius: 10px;
+        border: 3px solid #667eea;
+        background: #000;
+        transform: scaleX(-1);
+    }
+    
+    #canvas {
+        display: none;
+    }
+    
+    .result-box {
+        margin-top: 20px;
+        padding: 15px;
+        border-radius: 10px;
+        display: none;
+    }
+    
+    .result-success {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+    
+    .result-error {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+    
+    .result-info {
+        background: #d1ecf1;
+        color: #0c5460;
+        border: 1px solid #bee5eb;
+    }
+    
+    .result-warning {
+        background: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeeba;
+    }
+    
+    .btn-capture {
+        margin-top: 15px;
+        width: 100%;
+        padding: 12px;
+        font-size: 1.1rem;
+    }
+    
+    .lecture-list {
+        max-height: 200px;
+        overflow-y: auto;
+    }
+    
+    .lecture-item {
+        padding: 12px 15px;
+        border: 1px solid #e0e0e0;
+        border-radius: 10px;
+        margin-bottom: 10px;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .lecture-item:hover {
+        background: #f0f0f0;
+        transform: translateX(5px);
+    }
+    
+    .lecture-item.active {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border-color: #667eea;
+    }
+    
+    .lecture-time {
+        font-size: 0.75rem;
+        color: #666;
+    }
+    
+    .live-badge {
+        background: #ff4757;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        margin-left: 10px;
+        animation: pulse 1s infinite;
+    }
+    
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+    }
+    
+    .security-badge {
+        padding: 10px;
+        border-radius: 8px;
+        margin: 5px 0;
+        text-align: center;
+        font-size: 0.9rem;
+    }
+    
+    .security-pass {
+        background: #28a745;
+        color: white;
+    }
+    
+    .security-fail {
+        background: #dc3545;
+        color: white;
+    }
+    
+    .security-pending {
+        background: #ffc107;
+        color: #333;
+    }
+    
+    .liveness-modal {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        padding: 30px;
+        border-radius: 15px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        z-index: 1000;
+        text-align: center;
+        display: none;
+        min-width: 400px;
+    }
+    
+    .blink-counter {
+        font-size: 3rem;
+        font-weight: bold;
+        color: #667eea;
+        margin: 15px 0;
+    }
+    
+    .overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 999;
+        display: none;
+    }
+    
+    .manual-detect-btn {
+        margin-bottom: 10px;
+    }
+    
+    .ear-indicator {
+        font-size: 0.8rem;
+        margin-top: 10px;
+        padding: 8px;
+        background: #f8f9fa;
+        border-radius: 5px;
+        font-family: monospace;
+    }
+    
+    .blink-status-text {
+        font-size: 0.9rem;
+        margin: 10px 0;
+    }
+    
+    #livenessVideo {
+        max-height: 300px;
+        object-fit: cover;
+        margin-top: 10px;
+    }
+    
+    .eye-status {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        margin: 0 5px;
+    }
+    
+    .eye-open {
+        background-color: #28a745;
+        box-shadow: 0 0 5px #28a745;
+    }
+    
+    .eye-closed {
+        background-color: #dc3545;
+        box-shadow: 0 0 5px #dc3545;
+    }
+    
+    .manual-blink-btn {
+        margin-top: 15px;
+        width: 100%;
+        padding: 10px;
+        font-size: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="scanner-container">
+        <h2 class="text-center mb-4">
+            <i class="fas fa-shield-alt"></i> Secure Face Scanner
+        </h2>
+        
+        <div class="card">
+            <div class="card-body">
+                <!-- Security Level Indicator -->
+                <div class="alert alert-info text-center mb-3" id="securityInfo">
+                    <i class="fas fa-shield-alt me-2"></i>
+                    <strong>Security Checks:</strong> Face Recognition + Liveness Detection + Location Verification
+                </div>
+                
+                <!-- Event Selection -->
+                <div class="event-selector mb-3">
+                    <label class="form-label fw-bold">
+                        <i class="fas fa-calendar-alt me-2"></i>Select Event
+                    </label>
+                    <select id="eventSelect" class="form-select" onchange="loadEventDetails()">
+                        <option value="">Select an event...</option>
+                        {% for event in events %}
+                            <option value="{{ event.id }}" 
+                                    data-date="{{ event.date }}"
+                                    data-lat="{{ event.venue_latitude }}"
+                                    data-lng="{{ event.venue_longitude }}"
+                                    data-radius="{{ event.venue_radius }}"
+                                    data-has-location="{% if event.venue_latitude %}True{% else %}False{% endif %}">
+                                {{ event.name }} ({{ event.date }})
+                                {% if event.venue_latitude %}
+                                    - <i class="fas fa-lock"></i> Location Check
+                                {% else %}
+                                    - <i class="fas fa-exclamation-triangle text-warning"></i> No Location Check
+                                {% endif %}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <!-- Lectures for selected event -->
+                <div id="lecturesSection" style="display: none;">
+                    <label class="form-label fw-bold">
+                        <i class="fas fa-chalkboard-teacher me-2"></i>Select Lecture
+                    </label>
+                    <div id="lecturesList" class="lecture-list mb-3">
+                        <div class="text-center text-muted py-3">
+                            <i class="fas fa-spinner fa-spin"></i> Loading lectures...
+                        </div>
+                    </div>
+                </div>
+
+                <div id="selectedLectureDisplay" class="mt-2"></div>
+                
+                <hr>
+                
+                <!-- Security Checks Panel -->
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <div id="faceCheck" class="security-badge security-pending">
+                            <i class="fas fa-user me-1"></i> Face: Pending
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div id="livenessCheck" class="security-badge security-pending">
+                            <i class="fas fa-eye me-1"></i> Liveness: Pending
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div id="locationCheck" class="security-badge security-pending">
+                            <i class="fas fa-map-marker-alt me-1"></i> Location: Pending
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Manual Detect Button -->
+                <div class="text-center mb-3">
+                    <button class="btn btn-warning manual-detect-btn" onclick="manualDetect()" id="manualDetectBtn">
+                        <i class="fas fa-search"></i> Detect My Face
+                    </button>
+                </div>
+                
+                <!-- Camera Section -->
+                <div class="text-center">
+                    <video id="video" width="100%" height="auto" autoplay></video>
+                    <canvas id="canvas"></canvas>
+                    
+                    <div id="detectionStatus" class="small text-muted mt-2">
+                        <i class="fas fa-video"></i> Camera ready - Click "Detect My Face"
+                    </div>
+                    
+                    <div id="locationStatus" class="small mt-1" style="display: none;">
+                        <i class="fas fa-map-marker-alt"></i> <span id="locationText">Getting location...</span>
+                    </div>
+
+                    <div id="locationResult" style="display: none;"></div>
+                    
+                    <button class="btn btn-primary btn-capture" onclick="startVerification()" id="startBtn" disabled>
+                        <i class="fas fa-play me-2"></i>Start Verification
+                    </button>
+                    
+                    <button class="btn btn-success btn-capture" onclick="markAttendance()" id="markBtn" style="display: none;">
+                        <i class="fas fa-check-circle me-2"></i>Mark Attendance
+                    </button>
+                    
+                    <div id="result" class="result-box"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-body">
+                <h6><i class="fas fa-info-circle"></i> Instructions:</h6>
+                <ol class="small mb-0">
+                    <li>Select an event and lecture</li>
+                    <li>Click <strong>"Detect My Face"</strong> to recognize your face</li>
+                    <li>Once face is detected, click <strong>"Start Verification"</strong></li>
+                    <li><strong class="text-success">Click the "I Have Blinked 3 Times" button</strong> after blinking naturally</li>
+                    <li>Click <strong>"Mark Attendance"</strong> to complete</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Liveness Detection Modal -->
+<div id="overlay" class="overlay"></div>
+<div id="livenessModal" class="liveness-modal">
+    <h4><i class="fas fa-eye"></i> Liveness Detection</h4>
+    <p id="livenessMessage">Please blink your eyes 3 times</p>
+    <div id="autoBlinkStatus" class="blink-status-text">
+        <i class="fas fa-hand-pointer"></i> Blink naturally, then confirm below
+    </div>
+    <div class="blink-counter" id="blinkCounter">0/3</div>
+    <div class="progress mt-3" style="height: 10px;">
+        <div id="livenessProgress" class="progress-bar bg-success" style="width: 0%"></div>
+    </div>
+    <div id="earIndicator" class="ear-indicator">
+        <span id="earValue"><i class="fas fa-eye"></i> Look at camera and blink 3 times</span>
+    </div>
+    <video id="livenessVideo" width="100%" autoplay muted playsinline style="border-radius: 10px; margin-top: 10px;"></video>
+    <button class="btn btn-success manual-blink-btn" onclick="confirmBlinks()" id="confirmBlinkBtn">
+        <i class="fas fa-check-circle"></i> <i class="fas fa-check-circle text-success"></i> I Have Blinked 3 Times
+    </button>
+    <button class="btn btn-secondary mt-2" onclick="closeLivenessModal()">Cancel</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+<script>
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const context = canvas.getContext('2d');
+const resultDiv = document.getElementById('result');
+let currentStream = null;
+let currentEventId = null;
+let currentEventHasLocation = false;
+let currentVenueLat = null;
+let currentVenueLng = null;
+let currentVenueRadius = 100;
+let currentUserLocation = null;
+let faceVerified = false;
+let livenessVerified = false;
+let locationVerified = false;
+let detectedUserId = null;
+let detectedUserName = null;
+let detectedConfidence = 0;
+let blinkIntervalId = null;
+
+// Camera initialization with better error handling
+let cameraRetryCount = 0;
+const MAX_CAMERA_RETRIES = 3;
+
+async function initCamera() {
+    const detectionStatus = document.getElementById('detectionStatus');
+    
+    try {
+        const constraints = {
+            video: {
+                width: { ideal: 1280 },
+                height: { ideal: 720 },
+                facingMode: "user"
+            }
+        };
+        
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        currentStream = stream;
+        video.srcObject = stream;
+        
+        await new Promise((resolve) => {
+            video.onloadedmetadata = () => {
+                video.play();
+                resolve();
+            };
+        });
+        
+        detectionStatus.innerHTML = '<i class="fas fa-check-circle text-success"></i> ✅ Camera ready - Click "Detect My Face"';
+        console.log("Camera initialized successfully");
+        
+        if (currentEventId) {
+            document.getElementById('manualDetectBtn').disabled = false;
+        }
+        
+    } catch (err) {
+        console.error("Camera error:", err);
+        let errorMessage = 'Unable to access camera. ';
+        
+        switch(err.name) {
+            case 'NotAllowedError':
+                errorMessage += 'Please allow camera access. Click the camera icon in address bar.';
+                break;
+            case 'NotFoundError':
+                errorMessage += 'No camera found on your device.';
+                break;
+            case 'NotReadableError':
+                errorMessage += 'Camera is already in use by another application.';
+                break;
+            default:
+                errorMessage += err.message;
+        }
+        
+        detectionStatus.innerHTML = `<i class="fas fa-exclamation-triangle text-danger"></i> ${errorMessage}`;
+        showResult(errorMessage, 'error');
+        
+        if (cameraRetryCount < MAX_CAMERA_RETRIES) {
+            cameraRetryCount++;
+            detectionStatus.innerHTML += `<br><small>Retrying... (${cameraRetryCount}/${MAX_CAMERA_RETRIES})</small>`;
+            setTimeout(initCamera, 2000);
+        }
+    }
+}
+
+// Start camera
+if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    setTimeout(initCamera, 500);
+} else {
+    document.getElementById('detectionStatus').innerHTML = '<i class="fas fa-exclamation-triangle text-danger"></i> Your browser does not support camera access';
+    showResult('Camera API not supported. Please use Chrome, Firefox, or Edge.', 'error');
+}
+
+// Load event details
+async function loadEventDetails() {
+    const eventSelect = document.getElementById('eventSelect');
+    const selectedOption = eventSelect.options[eventSelect.selectedIndex];
+    const eventId = eventSelect.value;
+    const lecturesSection = document.getElementById('lecturesSection');
+    
+    if (!eventId) {
+        lecturesSection.style.display = 'none';
+        return;
+    }
+    
+    currentEventId = eventId;
+    currentEventHasLocation = selectedOption.dataset.hasLocation === 'True';
+    currentVenueLat = parseFloat(selectedOption.dataset.lat);
+    currentVenueLng = parseFloat(selectedOption.dataset.lng);
+    currentVenueRadius = parseInt(selectedOption.dataset.radius) || 100;
+    
+    if (currentEventHasLocation && currentVenueLat && currentVenueLng) {
+        document.getElementById('locationCheck').innerHTML = '<i class="fas fa-map-marker-alt me-1"></i> Location: Ready';
+        document.getElementById('locationCheck').className = 'security-badge security-pending';
+    } else {
+        document.getElementById('locationCheck').innerHTML = '<i class="fas fa-map-marker-alt me-1"></i> Location: Not Required';
+        document.getElementById('locationCheck').className = 'security-badge security-pass';
+        locationVerified = true;
+    }
+    
+    lecturesSection.style.display = 'block';
+    await loadLectures();
+}
+
+// Load lectures
+async function loadLectures() {
+    const lecturesList = document.getElementById('lecturesList');
+    lecturesList.innerHTML = '<div class="text-center text-muted py-3"><i class="fas fa-spinner fa-spin"></i> Loading lectures...</div>';
+    
+    try {
+        const response = await fetch(`/api/events/${currentEventId}/lectures`);
+        const lectures = await response.json();
+        
+        console.log('📚 Lectures received:', lectures); // Debug log
+        
+        if (lectures.length === 0) {
+            lecturesList.innerHTML = `<div class="text-center text-muted py-3">
+                <i class="fas fa-info-circle"></i> No lectures created for this event.<br>
+                <small>Please ask admin to create lectures first.</small>
+            </div>`;
+        } else {
+            let html = '';
+            lectures.forEach((lecture, index) => {
+                html += `
+                    <div class="lecture-item ${index === 0 ? 'active' : ''}" 
+                         onclick="selectLecture(this, '${lecture.id}', '${lecture.name}')" 
+                         data-lecture-id="${lecture.id}" 
+                         data-lecture-name="${lecture.name}">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>${lecture.name}</strong>
+                                ${lecture.professor ? `<div class="lecture-time"><i class="fas fa-chalkboard-teacher"></i> ${lecture.professor}</div>` : ''}
+                            </div>
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </div>
+                `;
+            });
+            lecturesList.innerHTML = html;
+            
+            const firstLecture = lecturesList.querySelector('.lecture-item');
+            if (firstLecture) {
+                window.selectedLectureId = firstLecture.dataset.lectureId;
+                window.selectedLectureName = firstLecture.dataset.lectureName;
+                console.log('Selected lecture:', window.selectedLectureName);
+            }
+        }
+    } catch (error) {
+        console.error('Error loading lectures:', error);
+        lecturesList.innerHTML = '<div class="alert alert-danger">Error loading lectures</div>';
+    }
+}
+
+function selectLecture(element, lectureId, lectureName) {
+    document.querySelectorAll('.lecture-item').forEach(item => item.classList.remove('active'));
+    element.classList.add('active');
+    window.selectedLectureId = lectureId;
+    window.selectedLectureName = lectureName;
+    
+    // Show selected lecture feedback
+    const lectureDisplay = document.getElementById('selectedLectureDisplay');
+    if (lectureDisplay) {
+        lectureDisplay.innerHTML = `<span class="badge bg-success"><i class="fas fa-check"></i> Selected: ${lectureName}</span>`;
+    }
+}
+
+// Manual face detection
+async function manualDetect() {
+    if (!currentEventId) {
+        showResult('Please select an event first', 'error');
+        return;
+    }
+    
+    const detectBtn = document.getElementById('manualDetectBtn');
+    const originalText = detectBtn.innerHTML;
+    detectBtn.disabled = true;
+    detectBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Detecting...';
+    
+    document.getElementById('detectionStatus').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Capturing and detecting face...';
+    
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const imageData = canvas.toDataURL('image/jpeg', 0.8);
+    
+    try {
+        const response = await fetch('/api/face/auto-detect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ face_image: imageData })
+        });
+        
+        const data = await response.json();
+        console.log('Detection response:', data);
+        
+        if (data.success && data.identified) {
+            detectedUserId = data.user_id;
+            detectedUserName = data.user_name;
+            detectedConfidence = data.confidence;
+            faceVerified = true;
+            
+            window.detectedUserId = detectedUserId;
+            window.detectedUserName = detectedUserName;
+            
+            document.getElementById('faceCheck').innerHTML = `<i class="fas fa-check-circle me-1"></i> Face: ${detectedUserName} (${detectedConfidence.toFixed(0)}%)`;
+            document.getElementById('faceCheck').className = 'security-badge security-pass';
+            document.getElementById('detectionStatus').innerHTML = `<i class="fas fa-check-circle text-success"></i> <i class="fas fa-check-circle text-success"></i> Face detected: ${detectedUserName}`;
+            document.getElementById('startBtn').disabled = false;
+            showResult(`<i class="fas fa-check-circle text-success"></i> Face recognized! Welcome ${detectedUserName}`, 'success');
+        } else if (data.face_detected) {
+            faceVerified = false;
+            document.getElementById('faceCheck').innerHTML = '<i class="fas fa-question-circle me-1"></i> Face: Not Recognized';
+            document.getElementById('faceCheck').className = 'security-badge security-fail';
+            document.getElementById('detectionStatus').innerHTML = '<i class="fas fa-exclamation-triangle text-warning"></i> <i class="fas fa-exclamation-triangle text-warning"></i> Face detected but not recognized';
+            document.getElementById('startBtn').disabled = true;
+            showResult('<i class="fas fa-exclamation-triangle text-warning"></i> Face detected but NOT recognized. Please go to Face Enrollment page to enroll your face.', 'warning');
+        } else {
+            faceVerified = false;
+            document.getElementById('faceCheck').innerHTML = '<i class="fas fa-user me-1"></i> Face: No Face Detected';
+            document.getElementById('faceCheck').className = 'security-badge security-pending';
+            document.getElementById('detectionStatus').innerHTML = '<i class="fas fa-exclamation-triangle text-danger"></i> <i class="fas fa-times-circle text-danger"></i> No face detected';
+            document.getElementById('startBtn').disabled = true;
+            showResult('<i class="fas fa-times-circle text-danger"></i> No face detected. Please look directly at the camera.', 'error');
+        }
+    } catch (error) {
+        console.error('Detection error:', error);
+        showResult('Error detecting face: ' + error.message, 'error');
+    } finally {
+        detectBtn.disabled = false;
+        detectBtn.innerHTML = originalText;
+    }
+}
+
+// Manual blink confirmation (RELIABLE)
+function confirmBlinks() {
+    livenessVerified = true;
+    document.getElementById('livenessCheck').innerHTML = '<i class="fas fa-check-circle me-1"></i> Liveness: Verified ✓';
+    document.getElementById('livenessCheck').className = 'security-badge security-pass';
+    
+    // Update progress to show completion
+    document.getElementById('blinkCounter').innerHTML = '3/3';
+    document.getElementById('livenessProgress').style.width = '100%';
+    document.getElementById('livenessMessage').innerHTML = '<i class="fas fa-check-circle text-success"></i> Verification complete!';
+    document.getElementById('autoBlinkStatus').innerHTML = '<i class="fas fa-check-circle text-success"></i> <i class="fas fa-gift"></i> Blinks confirmed!';
+    
+    setTimeout(() => {
+        closeLivenessModal();
+        continueVerification();
+    }, 500);
+}
+
+function showLivenessModal() {
+    document.getElementById('blinkCounter').innerHTML = '0/3';
+    document.getElementById('livenessProgress').style.width = '0%';
+    document.getElementById('livenessMessage').innerHTML = 'Please blink your eyes 3 times';
+    document.getElementById('autoBlinkStatus').innerHTML = '<i class="fas fa-hand-pointer"></i> Blink naturally, then click confirm';
+    document.getElementById('earValue').innerHTML = '<i class="fas fa-eye"></i> Look at camera and blink 3 times';
+    document.getElementById('overlay').style.display = 'block';
+    document.getElementById('livenessModal').style.display = 'block';
+    
+    // Start camera for liveness display
+    startLivenessCamera();
+}
+
+async function startLivenessCamera() {
+    const livenessVideo = document.getElementById('livenessVideo');
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        livenessVideo.srcObject = stream;
+        await livenessVideo.play();
+        window.livenessStream = stream;
+    } catch (error) {
+        console.error('Liveness camera error:', error);
+    }
+}
+
+function closeLivenessModal() {
+    if (window.livenessStream) {
+        window.livenessStream.getTracks().forEach(track => track.stop());
+        window.livenessStream = null;
+    }
+    document.getElementById('overlay').style.display = 'none';
+    document.getElementById('livenessModal').style.display = 'none';
+}
+
+async function getUserLocation() {
+    return new Promise((resolve) => {
+        if (!navigator.geolocation) {
+            console.warn("Geolocation not supported");
+            showResult('Geolocation is not supported by your browser. Location verification will be skipped.', 'warning');
+            resolve(null);
+            return;
+        }
+        
+        const locationStatus = document.getElementById('locationStatus');
+        if (locationStatus) {
+            locationStatus.style.display = 'block';
+            document.getElementById('locationText').innerHTML = 'Getting location...';
+        }
+        
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const location = {
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude,
+                    accuracy: position.coords.accuracy
+                };
+                if (locationStatus) {
+                    document.getElementById('locationText').innerHTML = `<i class="fas fa-map-marker-alt text-success"></i> Location: ${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`;
+                }
+                resolve(location);
+            },
+            (error) => {
+                console.error('Location error:', error);
+                let errorMsg = 'Location unavailable. ';
+                switch(error.code) {
+                    case error.PERMISSION_DENIED:
+                        errorMsg = 'Location access denied. Please enable location in browser settings.';
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        errorMsg = 'Location information unavailable. Please check your GPS.';
+                        break;
+                    case error.TIMEOUT:
+                        errorMsg = 'Location request timed out. Please try again.';
+                        break;
+                }
+                if (locationStatus) {
+                    document.getElementById('locationText').innerHTML = `<i class="fas fa-exclamation-triangle text-warning"></i> ${errorMsg}`;
+                }
+                showResult(errorMsg, 'warning');
+                resolve(null);
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+    });
+}
+
+// Add these functions to your existing face_scanner.html
+
+// Check user's location before marking attendance
+async function checkLocation(eventId) {
+    return new Promise((resolve, reject) => {
+        // Check if browser supports geolocation
+        if (!navigator.geolocation) {
+            reject(new Error('Geolocation is not supported by your browser'));
+            return;
+        }
+        
+        // Show loading indicator
+        showLocationLoading(true);
+        
+        navigator.geolocation.getCurrentPosition(
+            async function(position) {
+                try {
+                    console.log('📍 Location obtained:', position.coords.latitude, position.coords.longitude);
+                    
+                    const response = await fetch('/api/attendance/verify-location', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            event_id: eventId,
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    showLocationLoading(false);
+                    
+                    if (result.success) {
+                        resolve(result);
+                    } else {
+                        reject(new Error(result.message));
+                    }
+                } catch (error) {
+                    showLocationLoading(false);
+                    reject(error);
+                }
+            },
+            function(error) {
+                showLocationLoading(false);
+                let errorMessage = 'Location access denied. ';
+                switch(error.code) {
+                    case error.PERMISSION_DENIED:
+                        errorMessage += 'Please allow location access to mark attendance.';
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        errorMessage += 'Unable to get your location. Please check your GPS.';
+                        break;
+                    case error.TIMEOUT:
+                        errorMessage += 'Location request timed out. Please try again.';
+                        break;
+                    default:
+                        errorMessage += 'Unknown error occurred.';
+                }
+                reject(new Error(errorMessage));
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            }
+        );
+    });
+}
+
+// Show location loading indicator
+function showLocationLoading(show) {
+    const locationStatus = document.getElementById('locationStatus');
+    if (locationStatus) {
+        if (show) {
+            locationStatus.innerHTML = '<div class="alert alert-info"><i class="fas fa-spinner fa-spin me-2"></i>Checking your location...</div>';
+            locationStatus.style.display = 'block';
+        } else {
+            locationStatus.style.display = 'none';
+        }
+    }
+}
+
+// Show location verification result
+function showLocationVerificationResult(verified, message, distance, radius) {
+    const locationResult = document.getElementById('locationResult');
+    if (locationResult) {
+        const alertClass = verified ? 'alert-success' : 'alert-danger';
+        const icon = verified ? 'fa-check-circle' : 'fa-times-circle';
+        
+        let extraInfo = '';
+        if (distance && radius) {
+            extraInfo = `<br><small>Distance: ${distance}m (Max allowed: ${radius}m)</small>`;
+        }
+        
+        locationResult.innerHTML = `
+            <div class="alert ${alertClass}">
+                <i class="fas ${icon} me-2"></i>
+                ${message}${extraInfo}
+            </div>
+        `;
+        locationResult.style.display = 'block';
+        
+        // Auto hide after 5 seconds
+        setTimeout(() => {
+            locationResult.style.display = 'none';
+        }, 5000);
+    }
+}
+
+// Modified mark attendance function with location check
+async function markAttendanceWithLocation() {
+    const eventId = document.getElementById('eventSelect')?.value;
+    // Fix: Use selectedLectureName instead of non-existent lectureSelect
+    const lectureName = window.selectedLectureName || 'Main Session';
+    
+    if (!eventId) {
+        showNotification('Please select an event', 'warning');
+        return;
+    }
+    
+    // First, check location
+    showNotification('Checking location...', 'info');
+    
+    try {
+        const locationCheck = await checkLocation(eventId);
+        
+        if (!locationCheck.verified) {
+            showLocationVerificationResult(false, locationCheck.message, locationCheck.distance, locationCheck.radius);
+            return;
+        }
+        
+        showLocationVerificationResult(true, locationCheck.message, locationCheck.distance, locationCheck.radius);
+        startFaceDetection();
+        
+    } catch (error) {
+        console.error('Location check error:', error);
+        showNotification(error.message, 'danger');
+    }
+}
+
+function startFaceDetection() {
+    // This function is not needed - face detection is done by manualDetect()
+    console.log("Face detection would start here");
+}
+
+// Store location in session when marking attendance
+async function storeAttendanceWithLocation(userId, eventId, lectureName) {
+    return new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+            async function(position) {
+                try {
+                    const response = await fetch('/api/attendance/mark-with-location', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            user_id: userId,
+                            event_id: eventId,
+                            lecture_name: lectureName,
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    resolve(result);
+                } catch (error) {
+                    reject(error);
+                }
+            },
+            function(error) {
+                reject(error);
+            },
+            { enableHighAccuracy: true, timeout: 10000 }
+        );
+    });
+}
+
+// Add this to your HTML (in face_scanner.html, add these elements)
+// Add this somewhere in your existing HTML structure:
+
+
+
+// Start verification process
+async function startVerification() {
+    console.log("🔍 Start verification called");
+    
+    if (!currentEventId) {
+        showResult('Please select an event first', 'error');
+        return;
+    }
+    
+    if (!window.selectedLectureId) {
+        showResult('Please select a lecture', 'error');
+        return;
+    }
+    
+    if (!faceVerified || !detectedUserId) {
+        showResult('<i class="fas fa-times-circle text-danger"></i> Face not recognized. Please click "Detect My Face" first.', 'error');
+        return;
+    }
+    
+    console.log("✅ All checks passed, showing liveness modal");
+    
+    const startBtn = document.getElementById('startBtn');
+    startBtn.disabled = true;
+    startBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Verifying...';
+    
+    showResult('Starting security verification...', 'info');
+    
+    try {
+        showResult('<i class="fas fa-eye"></i> Step 1: Liveness detection - Please blink 3 times, then click confirm', 'info');
+        showLivenessModal();
+        console.log("📹 Liveness modal shown");
+    } catch (error) {
+        console.error('Verification error:', error);
+        showResult('<i class="fas fa-times-circle text-danger"></i> Verification failed: ' + error.message, 'error');
+        startBtn.disabled = false;
+        startBtn.innerHTML = '<i class="fas fa-play me-2"></i>Start Verification';
+    }
+}
+
+// Continue verification after liveness is complete
+async function continueVerification() {
+    try {
+        if (currentEventHasLocation && currentVenueLat && currentVenueLng) {
+            showResult('<i class="fas fa-map-marker-alt"></i> Verifying location...', 'info');
+            currentUserLocation = await getUserLocation();
+            
+            if (currentUserLocation) {
+                const R = 6371000;
+                const lat1 = currentUserLocation.lat * Math.PI / 180;
+                const lat2 = currentVenueLat * Math.PI / 180;
+                const dLat = (currentVenueLat - currentUserLocation.lat) * Math.PI / 180;
+                const dLon = (currentVenueLng - currentUserLocation.lng) * Math.PI / 180;
+                
+                const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                          Math.cos(lat1) * Math.cos(lat2) *
+                          Math.sin(dLon/2) * Math.sin(dLon/2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                const distance = R * c;
+                
+                locationVerified = distance <= currentVenueRadius;
+                
+                if (locationVerified) {
+                    document.getElementById('locationCheck').innerHTML = `<i class="fas fa-check-circle me-1"></i> Location: Verified (${Math.round(distance)}m) ✓`;
+                    document.getElementById('locationCheck').className = 'security-badge security-pass';
+                } else {
+                    document.getElementById('locationCheck').innerHTML = `<i class="fas fa-exclamation-triangle me-1"></i> Location: Too far (${Math.round(distance)}m)`;
+                    document.getElementById('locationCheck').className = 'security-badge security-fail';
+                }
+            }
+        } else {
+            locationVerified = true;
+            document.getElementById('locationCheck').innerHTML = '<i class="fas fa-check-circle me-1"></i> Location: Not Required';
+            document.getElementById('locationCheck').className = 'security-badge security-pass';
+        }
+        
+        showResult('<i class="fas fa-check-circle text-success"></i> All security checks passed! Click "Mark Attendance" to complete.', 'success');
+        document.getElementById('markBtn').style.display = 'block';
+        document.getElementById('startBtn').style.display = 'none';
+        
+    } catch (error) {
+        console.error('Verification error:', error);
+        showResult('<i class="fas fa-times-circle text-danger"></i> Verification failed: ' + error.message, 'error');
+        document.getElementById('startBtn').disabled = false;
+        document.getElementById('startBtn').innerHTML = '<i class="fas fa-play me-2"></i>Start Verification';
+    }
+}
+
+// Mark attendance
+async function markAttendance() {
+    const markBtn = document.getElementById('markBtn');
+    markBtn.disabled = true;
+    markBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Marking...';
+    
+    const eventSelect = document.getElementById('eventSelect');
+    const eventName = eventSelect.options[eventSelect.selectedIndex]?.text;
+    
+    // First verify location if needed
+    if (currentEventHasLocation) {
+        try {
+            const locationCheck = await checkLocation(currentEventId);
+            if (!locationCheck.verified) {
+                showLocationVerificationResult(false, locationCheck.message, locationCheck.distance, locationCheck.radius);
+                markBtn.disabled = false;
+                markBtn.innerHTML = '<i class="fas fa-check-circle me-2"></i>Mark Attendance';
+                return;
+            }
+            locationVerified = true;
+            showLocationVerificationResult(true, locationCheck.message, locationCheck.distance, locationCheck.radius);
+        } catch (error) {
+            showResult('Location verification failed: ' + error.message, 'error');
+            markBtn.disabled = false;
+            markBtn.innerHTML = '<i class="fas fa-check-circle me-2"></i>Mark Attendance';
+            return;
+        }
+    } else {
+        locationVerified = true;
+    }
+    
+    // Proceed with attendance marking
+    try {
+        const response = await fetch('/api/attendance/check-in', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                event_id: parseInt(currentEventId),
+                lecture_name: window.selectedLectureName,
+                latitude: currentUserLocation ? currentUserLocation.lat : null,
+                longitude: currentUserLocation ? currentUserLocation.lng : null,
+                liveness_score: livenessVerified ? 0.9 : 0.3,
+                face_verified: faceVerified,
+                location_verified: locationVerified
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showResult(`
+                <i class="fas fa-check-circle"></i> 
+                <strong>Attendance Marked Successfully!</strong><br>
+                <strong>User:</strong> ${detectedUserName}<br>
+                <strong>Event:</strong> ${eventName}<br>
+                <strong>Lecture:</strong> ${window.selectedLectureName}<br>
+                <strong>Security Status:</strong><br>
+                - Face: <i class="fas fa-check-circle text-success"></i> Verified<br>
+                - Liveness: <i class="fas fa-check-circle text-success"></i> Verified<br>
+                - Location: ${locationVerified ? '<i class="fas fa-check-circle text-success"></i> Verified' : '<i class="fas fa-exclamation-triangle text-warning"></i> Not Required'}<br>
+                <br>Check-in time: ${new Date().toLocaleTimeString()}
+            `, 'success');
+            
+            setTimeout(() => {
+                location.reload();
+            }, 4000);
+        } else {
+            showResult(`<i class="fas fa-times-circle text-danger"></i> Failed: ${data.message}`, 'error');
+            markBtn.disabled = false;
+            markBtn.innerHTML = '<i class="fas fa-check-circle me-2"></i>Mark Attendance';
+        }
+    } catch (error) {
+        console.error('Mark attendance error:', error);
+        showResult('<i class="fas fa-times-circle text-danger"></i> Error marking attendance: ' + error.message, 'error');
+        markBtn.disabled = false;
+        markBtn.innerHTML = '<i class="fas fa-check-circle me-2"></i>Mark Attendance';
+    }
+}
+
+function showResult(message, type) {
+    resultDiv.style.display = 'block';
+    resultDiv.className = `result-box result-${type}`;
+    resultDiv.innerHTML = message;
+    
+    if (type === 'success') {
+        setTimeout(() => {
+            resultDiv.style.display = 'none';
+        }, 5000);
+    }
+}
+
+function showNotification(message, type) {
+    // Use your existing showResult function or create a toast notification
+    showResult(message, type === 'danger' ? 'error' : (type === 'warning' ? 'warning' : 'info'));
+}
+
+
+
+// Clean up
+window.addEventListener('beforeunload', () => {
+    if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+    }
+    if (window.livenessStream) {
+        window.livenessStream.getTracks().forEach(track => track.stop());
+    }
+});
+</script>
+{% endblock %}

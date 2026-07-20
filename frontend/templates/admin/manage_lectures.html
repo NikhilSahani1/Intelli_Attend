@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Lectures{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Lecture Management</h2>
+        <a href="{{ url_for('create_lecture') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Create Lecture
+        </a>
+    </div>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    
+    <div class="card">
+        <div class="card-body">
+            {% if lectures %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Lecture Name</th>
+                                <th>Professor Name</th>
+                                <th>Event</th>
+                                <th>Conducted By</th>
+                                <th>Date</th>
+                                <th>Attendance</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for lecture in lectures %}
+                            <tr>
+                                <td>{{ lecture.id }}</td>
+                                <td>{{ lecture.name }}</td>
+                                <td>{{ lecture.professor_name }}</td>
+                                <td>{{ lecture.event_name if lecture.event_name else 'N/A' }}</a></td>
+                                <td>{{ lecture.conducted_by if lecture.conducted_by else 'Admin' }}</a></td>
+                                <td>{{ lecture.date if lecture.date else 'N/A' }}</a></td>
+                                <td>
+                                    <span class="badge bg-info">{{ lecture.attendance_count if lecture.attendance_count else 0 }}</span>
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('delete_lecture', lecture_id=lecture.id) }}" 
+                                       class="btn btn-sm btn-danger"
+                                       onclick="return confirm('Are you sure you want to delete this lecture?')">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </a>
+                                </a>
+                             </a>
+                            {% endfor %}
+                        </tbody>
+                     </a>
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-chalkboard-teacher fa-4x text-muted mb-3"></i>
+                    <h5>No Lectures Found</h5>
+                    <p class="text-muted">Create your first lecture using the button above.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+
+{% block title %}ML Dashboard - AMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <h1 class="h3 mb-4">Machine Learning Dashboard</h1>
+    
+    <div class="row">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Face Enrollment Rate</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.face_enrollment_rate }}%</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-face-smile fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Face Enrolled</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.face_enrolled }} / {{ stats.total_users }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Fraud Alerts</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.total_fraud_alerts }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Active Users (7d)</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.active_users_7d }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-users fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Fraud Detection</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-pie pt-4">
+                        <canvas id="fraudPieChart"></canvas>
+                    </div>
+                    <hr>
+                    <div class="mt-4 text-center small">
+                        <span class="mr-2">
+                            <i class="fas fa-circle text-danger"></i> High Risk ({{ stats.high_risk }})
+                        </span>
+                        <span class="mr-2">
+                            <i class="fas fa-circle text-warning"></i> Medium Risk ({{ stats.medium_risk }})
+                        </span>
+                        <span class="mr-2">
+                            <i class="fas fa-circle text-success"></i> Low Risk ({{ stats.low_risk }})
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Attendance Pattern by Day</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="attendancePatternChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-12 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Attendance Timeline (Last 30 Days)</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="attendanceTimelineChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-12 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">ML System Status</h6>
+                </div>
+                <div class="card-body">
+                    <div class="alert {% if ml_available %}alert-success{% else %}alert-warning{% endif %}">
+                        {% if ml_available %}
+                            <i class="fas fa-check-circle me-2"></i> ML modules are active and running
+                        {% else %}
+                            <i class="fas fa-exclamation-triangle me-2"></i> ML modules running in mock mode (development)
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Fraud Pie Chart
+const fraudCtx = document.getElementById('fraudPieChart').getContext('2d');
+new Chart(fraudCtx, {
+    type: 'pie',
+    data: {
+        labels: ['High Risk', 'Medium Risk', 'Low Risk'],
+        datasets: [{
+            data: [{{ stats.high_risk }}, {{ stats.medium_risk }}, {{ stats.low_risk }}],
+            backgroundColor: ['#e74a3b', '#f6c23e', '#1cc88a'],
+            hoverBackgroundColor: ['#e02d1b', '#e6b110', '#17a673'],
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            }
+        }
+    }
+});
+
+// Attendance Pattern Chart
+const patternCtx = document.getElementById('attendancePatternChart').getContext('2d');
+new Chart(patternCtx, {
+    type: 'bar',
+    data: {
+        labels: [{% for item in stats.attendance_pattern %}'{{ item.day }}'{% if not loop.last %}, {% endif %}{% endfor %}],
+        datasets: [{
+            label: 'Attendance',
+            data: [{% for item in stats.attendance_pattern %}{{ item.count }}{% if not loop.last %}, {% endif %}{% endfor %}],
+            backgroundColor: '#4e73df',
+            borderColor: '#4e73df',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
+
+// Attendance Timeline Chart
+const timelineCtx = document.getElementById('attendanceTimelineChart').getContext('2d');
+new Chart(timelineCtx, {
+    type: 'line',
+    data: {
+        labels: [{% for item in stats.attendance_timeline %}'{{ item.date }}'{% if not loop.last %}, {% endif %}{% endfor %}],
+        datasets: [{
+            label: 'Attendance',
+            data: [{% for item in stats.attendance_timeline %}{{ item.count }}{% if not loop.last %}, {% endif %}{% endfor %}],
+            borderColor: '#36b9cc',
+            backgroundColor: 'rgba(54, 185, 204, 0.1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.3
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
+</script>
+{% endblock %}
+{% endblock %}

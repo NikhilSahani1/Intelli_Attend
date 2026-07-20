@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}Face Test{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4>Face Detection Test</h4>
+                </div>
+                <div class="card-body text-center">
+                    <video id="video" width="400" height="300" autoplay style="border: 1px solid #ddd;"></video>
+                    <canvas id="canvas" style="display: none;"></canvas>
+                    
+                    <div id="result" class="mt-3"></div>
+                    
+                    <button class="btn btn-primary mt-3" onclick="testFace()">Test Face</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+// Start camera
+navigator.mediaDevices.getUserMedia({ video: true })
+    .then(stream => {
+        video.srcObject = stream;
+        document.getElementById('result').innerHTML = '<div class="alert alert-success">✅ Camera working!</div>';
+    })
+    .catch(err => {
+        document.getElementById('result').innerHTML = '<div class="alert alert-danger">❌ Camera error: ' + err.message + '</div>';
+    });
+
+async function testFace() {
+    document.getElementById('result').innerHTML = '<div class="alert alert-info">📸 Capturing...</div>';
+    
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const imageData = canvas.toDataURL('image/jpeg', 0.8);
+    
+    try {
+        const response = await fetch('/api/face/auto-detect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ face_image: imageData })
+        });
+        
+        const data = await response.json();
+        console.log('API Response:', data);
+        
+        if (data.success && data.identified) {
+            document.getElementById('result').innerHTML = `<div class="alert alert-success">
+                ✅ Face Recognized!<br>
+                <strong>User:</strong> ${data.user_name}<br>
+                <strong>Confidence:</strong> ${data.confidence.toFixed(1)}%
+            </div>`;
+        } else if (data.face_detected) {
+            document.getElementById('result').innerHTML = `<div class="alert alert-warning">
+                ⚠️ Face detected but NOT recognized!<br>
+                Please enroll your face first.
+            </div>`;
+        } else {
+            document.getElementById('result').innerHTML = `<div class="alert alert-danger">
+                ❌ No face detected!<br>
+                Please look at the camera with good lighting.
+            </div>`;
+        }
+    } catch (error) {
+        document.getElementById('result').innerHTML = `<div class="alert alert-danger">❌ Error: ${error.message}</div>`;
+    }
+}
+</script>
+{% endblock %}

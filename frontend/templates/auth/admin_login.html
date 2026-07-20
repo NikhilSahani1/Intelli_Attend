@@ -1,0 +1,877 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Login - Intelligent Attendance System{% endblock %}
+
+{% block extra_css %}
+<style>
+    .admin-wrapper {
+        min-height: calc(100vh - 200px);
+        display: flex;
+        align-items: center;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 40px 0;
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* Animated gradient background */
+    .admin-wrapper::before {
+        content: '';
+        position: absolute;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+        background-size: 50px 50px;
+        animation: moveBackground 20s linear infinite;
+        opacity: 0.3;
+    }
+
+    @keyframes moveBackground {
+        0% {
+            transform: translate(0, 0);
+        }
+
+        100% {
+            transform: translate(50px, 50px);
+        }
+    }
+
+    /* Floating particles */
+    .particles {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+    }
+
+    .particle {
+        position: absolute;
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        animation: float 8s infinite;
+    }
+
+    @keyframes float {
+
+        0%,
+        100% {
+            transform: translateY(0) rotate(0deg);
+        }
+
+        50% {
+            transform: translateY(-100px) rotate(180deg);
+        }
+    }
+
+    .admin-card {
+        background: rgba(255, 255, 255, 0.98);
+        backdrop-filter: blur(10px);
+        border-radius: 30px;
+        box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3);
+        overflow: hidden;
+        animation: slideInUp 0.8s ease-out;
+        position: relative;
+        z-index: 10;
+        transform: translateY(0);
+        transition: transform 0.3s;
+    }
+
+    .admin-card:hover {
+        transform: translateY(-5px);
+    }
+
+    @keyframes slideInUp {
+        from {
+            opacity: 0;
+            transform: translateY(50px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .admin-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 40px 30px;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .admin-header::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+        background-size: 30px 30px;
+        animation: rotate 20s linear infinite;
+    }
+
+    @keyframes rotate {
+        from {
+            transform: rotate(0deg);
+        }
+
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    .admin-icon {
+        width: 100px;
+        height: 100px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 20px;
+        font-size: 3rem;
+        color: white;
+        border: 4px solid rgba(255, 255, 255, 0.3);
+        box-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
+        animation: pulse 2s infinite;
+        position: relative;
+        z-index: 1;
+    }
+
+    @keyframes pulse {
+
+        0%,
+        100% {
+            transform: scale(1);
+            box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
+        }
+
+        50% {
+            transform: scale(1.05);
+            box-shadow: 0 0 0 20px rgba(255, 255, 255, 0);
+        }
+    }
+
+    .admin-header h2 {
+        color: white;
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 5px;
+        letter-spacing: 1px;
+        position: relative;
+        z-index: 1;
+    }
+
+    .admin-header p {
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 0.95rem;
+        position: relative;
+        z-index: 1;
+    }
+
+    .admin-body {
+        padding: 40px;
+    }
+
+    .admin-input-group {
+        position: relative;
+        margin-bottom: 25px;
+    }
+
+    .admin-input-group i:not(.toggle-password) {
+        position: absolute;
+        left: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #667eea;
+        font-size: 1.2rem;
+        z-index: 10;
+        transition: all 0.3s;
+    }
+
+    .admin-input-group .form-control {
+        padding-left: 50px;
+        padding-right: 50px;
+        height: 55px;
+        background: #f8f9fa;
+        border: 2px solid #e0e0e0;
+        border-radius: 15px;
+        color: #333;
+        font-size: 1rem;
+        transition: all 0.3s;
+        width: 100%;
+    }
+
+    .admin-input-group .form-control:focus {
+        background: white;
+        border-color: #667eea;
+        box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        transform: translateY(-2px);
+        outline: none;
+    }
+
+    .admin-input-group .form-control:focus+i:not(.toggle-password) {
+        color: #764ba2;
+        transform: translateY(-50%) scale(1.1);
+    }
+
+    .admin-input-group .form-control::placeholder {
+        color: #999;
+    }
+
+    /* Eye icon on the right side */
+    .toggle-password {
+        position: absolute;
+        right: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #999;
+        cursor: pointer;
+        z-index: 10;
+        transition: all 0.3s;
+        font-size: 1.2rem;
+    }
+
+    .toggle-password:hover {
+        color: #667eea;
+        transform: translateY(-50%) scale(1.1);
+    }
+
+    .admin-options {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin: 25px 0;
+        color: #666;
+    }
+
+    .admin-checkbox {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        font-size: 0.9rem;
+    }
+
+    .admin-checkbox input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+        accent-color: #667eea;
+    }
+
+    .admin-link {
+        color: #667eea;
+        text-decoration: none;
+        font-weight: 500;
+        font-size: 0.9rem;
+        transition: all 0.3s;
+    }
+
+    .admin-link:hover {
+        color: #764ba2;
+        text-decoration: underline;
+    }
+
+    .btn-admin {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 15px;
+        padding: 14px;
+        font-weight: 600;
+        font-size: 1rem;
+        color: white;
+        width: 100%;
+        transition: all 0.3s;
+        position: relative;
+        overflow: hidden;
+        cursor: pointer;
+    }
+
+    .btn-admin::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+        transition: left 0.5s;
+    }
+
+    .btn-admin:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn-admin:hover::before {
+        left: 100%;
+    }
+
+    .btn-admin:active {
+        transform: translateY(0);
+    }
+
+    .btn-admin i {
+        margin-right: 8px;
+    }
+
+    .demo-credentials {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border: 1px solid #e0e0e0;
+        border-radius: 15px;
+        padding: 15px;
+        margin-top: 25px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+    .demo-credentials:hover {
+        background: white;
+        border-color: #667eea;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .demo-credentials p {
+        color: #666;
+        margin: 5px 0;
+        font-family: monospace;
+        font-size: 0.95rem;
+    }
+
+    .demo-credentials .label {
+        color: #667eea;
+        font-weight: 600;
+        margin-right: 10px;
+    }
+
+    .demo-credentials small {
+        color: #999;
+        font-size: 0.75rem;
+    }
+
+    .security-notice {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-top: 25px;
+        padding: 12px;
+        background: #f8f9fa;
+        border-radius: 12px;
+        border-left: 3px solid #667eea;
+    }
+
+    .security-notice i {
+        color: #667eea;
+        font-size: 1.5rem;
+    }
+
+    .security-notice span {
+        color: #666;
+        font-size: 0.85rem;
+        line-height: 1.4;
+    }
+
+    .back-link {
+        color: white;
+        text-decoration: none;
+        transition: all 0.3s;
+        display: inline-block;
+        font-size: 0.9rem;
+    }
+
+    .back-link:hover {
+        color: rgba(255, 255, 255, 0.8);
+        transform: translateX(-3px);
+    }
+
+    .stats-badge {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background: rgba(102, 126, 234, 0.9);
+        border-radius: 20px;
+        padding: 5px 12px;
+        color: white;
+        font-size: 0.75rem;
+        z-index: 10;
+        backdrop-filter: blur(5px);
+    }
+
+    .stats-badge i {
+        margin-right: 5px;
+        font-size: 0.7rem;
+    }
+
+    /* Stats cards */
+    .stats-row {
+        display: flex;
+        gap: 15px;
+        margin-top: 25px;
+    }
+
+    .stat-card {
+        flex: 1;
+        text-align: center;
+        padding: 12px;
+        background: #f8f9fa;
+        border-radius: 12px;
+        transition: all 0.3s;
+    }
+
+    .stat-card:hover {
+        background: white;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-card i {
+        font-size: 1.5rem;
+        color: #667eea;
+        margin-bottom: 5px;
+    }
+
+    .stat-card h4 {
+        font-size: 1.3rem;
+        font-weight: bold;
+        margin: 5px 0;
+        color: #333;
+    }
+
+    .stat-card p {
+        font-size: 0.7rem;
+        color: #999;
+        margin: 0;
+    }
+
+    /* Alert styling */
+    .alert-custom {
+        padding: 12px 15px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        animation: slideDown 0.5s ease-out;
+    }
+
+    .alert-success {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+
+    .alert-danger {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+
+    .alert-info {
+        background: #d1ecf1;
+        color: #0c5460;
+        border: 1px solid #bee5eb;
+    }
+
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Loading state */
+    .btn-admin.loading {
+        opacity: 0.8;
+        cursor: not-allowed;
+    }
+
+    .btn-admin.loading i {
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        from {
+            transform: rotate(0deg);
+        }
+
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .admin-body {
+            padding: 30px 25px;
+        }
+
+        .admin-header h2 {
+            font-size: 1.5rem;
+        }
+
+        .admin-icon {
+            width: 80px;
+            height: 80px;
+            font-size: 2.5rem;
+        }
+
+        .stats-row {
+            gap: 10px;
+        }
+
+        .stat-card h4 {
+            font-size: 1.1rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-wrapper">
+    <div class="particles" id="particles"></div>
+
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8 col-lg-6 col-xl-5">
+                <div class="admin-card">
+                    <div class="stats-badge">
+                        <i class="fas fa-shield-alt"></i>
+                        Secure Access
+                    </div>
+
+                    <div class="admin-header">
+                        <div class="admin-icon">
+                            <i class="fas fa-user-shield"></i>
+                        </div>
+                        <h2>Admin Portal</h2>
+                        <p>Authorized Personnel Only</p>
+                    </div>
+
+                    <div class="admin-body">
+                        <!-- Flash messages -->
+                        {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                        {% for category, message in messages %}
+                        <div class="alert-custom alert-{{ category }}">
+                            <i
+                                class="fas fa-{% if category == 'success' %}check-circle{% elif category == 'error' %}exclamation-circle{% else %}info-circle{% endif %} me-2"></i>
+                            {{ message }}
+                        </div>
+                        {% endfor %}
+                        {% endif %}
+                        {% endwith %}
+
+                        <form method="POST" action="{{ url_for('admin_login') }}" id="adminLoginForm">
+                            <div class="admin-input-group">
+                                <i class="fas fa-user"></i>
+                                <input type="text" class="form-control" id="username" name="username"
+                                    placeholder="Enter administrator username" required autofocus>
+                            </div>
+
+                            <div class="admin-input-group">
+                                <i class="fas fa-lock"></i>
+                                <input type="password" class="form-control" id="password" name="password"
+                                    placeholder="Enter administrator password" required>
+                                <i class="fas fa-eye toggle-password" id="togglePasswordIcon"
+                                    onclick="togglePassword()"></i>
+                            </div>
+
+                            <div class="admin-options">
+                                <label class="admin-checkbox">
+                                    <input type="checkbox" name="remember" id="remember">
+                                    <span>Remember me</span>
+                                </label>
+
+                                <a href="#" class="admin-link" data-bs-toggle="modal" data-bs-target="#forgotModal">
+                                    <i class="fas fa-key me-1"></i>
+                                    Forgot Password?
+                                </a>
+                            </div>
+
+                            <button type="submit" class="btn-admin" id="adminLoginBtn">
+                                <i class="fas fa-sign-in-alt"></i>
+                                Login to Dashboard
+                            </button>
+                        </form>
+
+                        <!-- Demo Credentials -->
+                        <div class="demo-credentials" onclick="fillDemoCredentials()" style="cursor: pointer;">
+                            <div class="text-center">
+                                <i class="fas fa-mouse-pointer"
+                                    style="color: #667eea; font-size: 1.5rem; margin-bottom: 10px;"></i>
+                                <p class="mb-1">
+                                    <span class="label"><i class="fas fa-user"></i> Username:</span>
+                                    <strong>admin</strong>
+                                </p>
+                                <p class="mb-0">
+                                    <span class="label"><i class="fas fa-lock"></i> Password:</span>
+                                    <strong>••••••••</strong>
+                                </p>
+                                <small class="text-muted">
+                                    <i class="fas fa-hand-pointer"></i> Click here to auto-fill credentials
+                                </small>
+                            </div>
+                        </div>
+
+                        <!-- Quick Stats - REAL DATA from Database -->
+                        <div class="stats-row">
+                            <div class="stat-card">
+                                <i class="fas fa-users"></i>
+                                <h4 id="statUsers">--</h4>
+                                <p>Total Users</p>
+                            </div>
+                            <div class="stat-card">
+                                <i class="fas fa-calendar-alt"></i>
+                                <h4 id="statEvents">--</h4>
+                                <p>Active Events</p>
+                            </div>
+                            <div class="stat-card">
+                                <i class="fas fa-check-circle"></i>
+                                <h4 id="statAttendance">--</h4>
+                                <p>Today's Attendance</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center mt-4">
+                    <a href="{{ url_for('home') }}" class="back-link">
+                        <i class="fas fa-arrow-left me-2"></i>
+                        Return to Home
+                    </a>
+                    <span class="mx-3 text-white-50">|</span>
+                    <a href="{{ url_for('login') }}" class="back-link">
+                        <i class="fas fa-user me-2"></i>
+                        User Login
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Forgot Password Modal -->
+<div class="modal fade" id="forgotModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header"
+                style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                <h5 class="modal-title">
+                    <i class="fas fa-key me-2"></i>
+                    Reset Password
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <i class="fas fa-envelope" style="font-size: 3rem; color: #667eea; margin-bottom: 15px;"></i>
+                <p>Please contact your system administrator to reset your password.</p>
+                <div class="alert alert-info mt-3">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Demo Credentials:</strong><br>
+                    Username: <strong>admin</strong><br>
+                    Password: <strong>Admin@123</strong>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Toggle password visibility function with eye icon change
+    function togglePassword() {
+        const passwordInput = document.getElementById('password');
+        const toggleIcon = document.getElementById('togglePasswordIcon');
+
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            toggleIcon.classList.remove('fa-eye');
+            toggleIcon.classList.add('fa-eye-slash');
+            toggleIcon.style.color = '#667eea';
+        } else {
+            passwordInput.type = 'password';
+            toggleIcon.classList.remove('fa-eye-slash');
+            toggleIcon.classList.add('fa-eye');
+            toggleIcon.style.color = '#999';
+        }
+    }
+
+    // Fill demo credentials
+    function fillDemoCredentials() {
+        document.getElementById('username').value = 'admin';
+        document.getElementById('password').value = 'Admin@123';
+
+        // Highlight effect
+        const inputs = document.querySelectorAll('.admin-input-group .form-control');
+        inputs.forEach(input => {
+            input.style.transform = 'scale(1.02)';
+            input.style.borderColor = '#4caf50';
+            setTimeout(() => {
+                input.style.transform = 'scale(1)';
+                input.style.borderColor = '#e0e0e0';
+            }, 1000);
+        });
+
+        showStatus('Demo credentials filled! Click login to continue.', 'success');
+    }
+
+    // Show status message
+    function showStatus(message, type) {
+        const existingAlert = document.querySelector('.alert-custom');
+        if (existingAlert) {
+            existingAlert.remove();
+        }
+
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert-custom alert-${type}`;
+        alertDiv.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : 'info-circle'} me-2"></i>
+        ${message}
+    `;
+
+        const form = document.getElementById('adminLoginForm');
+        form.insertAdjacentElement('beforebegin', alertDiv);
+
+        setTimeout(() => {
+            alertDiv.remove();
+        }, 4000);
+    }
+
+    // Fetch REAL stats from database (public endpoint - no login required)
+    async function fetchStats() {
+        try {
+            console.log('Fetching stats from /api/public/stats...');
+            const response = await fetch('/api/public/stats');
+            const data = await response.json();
+
+            console.log('Stats response:', data);
+
+            if (data.success && data.stats) {
+                // Display real data from database
+                const totalUsers = data.stats.total_users || 0;
+                const activeEvents = data.stats.active_events || 0;
+                const todayAttendance = data.stats.today_attendance || 0;
+
+                document.getElementById('statUsers').textContent = totalUsers;
+                document.getElementById('statEvents').textContent = activeEvents;
+                document.getElementById('statAttendance').textContent = todayAttendance;
+
+                console.log(`Updated stats - Users: ${totalUsers}, Events: ${activeEvents}, Attendance: ${todayAttendance}`);
+
+                // Update tooltip with last update time
+                const statCards = document.querySelectorAll('.stat-card');
+                const now = new Date();
+                statCards.forEach(card => {
+                    card.title = `Last updated: ${now.toLocaleTimeString()}`;
+                });
+            } else {
+                console.log('Failed to get stats, using zeros');
+                document.getElementById('statUsers').textContent = '0';
+                document.getElementById('statEvents').textContent = '0';
+                document.getElementById('statAttendance').textContent = '0';
+            }
+        } catch (error) {
+            console.error('Error fetching stats:', error);
+            document.getElementById('statUsers').textContent = '0';
+            document.getElementById('statEvents').textContent = '0';
+            document.getElementById('statAttendance').textContent = '0';
+        }
+    }
+
+    // Create floating particles
+    function createParticles() {
+        const container = document.getElementById('particles');
+        if (!container) return;
+        for (let i = 0; i < 50; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            const size = Math.random() * 5 + 2;
+            particle.style.width = size + 'px';
+            particle.style.height = size + 'px';
+            particle.style.left = Math.random() * 100 + '%';
+            particle.style.top = Math.random() * 100 + '%';
+            particle.style.animationDelay = Math.random() * 8 + 's';
+            particle.style.animationDuration = (Math.random() * 10 + 5) + 's';
+            container.appendChild(particle);
+        }
+    }
+
+    // Form submission handler
+    const loginForm = document.getElementById('adminLoginForm');
+    if (loginForm) {
+        loginForm.addEventListener('submit', function (e) {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const loginBtn = document.getElementById('adminLoginBtn');
+
+            if (!username || !password) {
+                e.preventDefault();
+                showStatus('Please enter both username and password', 'danger');
+                return;
+            }
+
+            if (username.length < 3) {
+                e.preventDefault();
+                showStatus('Username must be at least 3 characters', 'danger');
+                return;
+            }
+
+            loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Verifying credentials...';
+            loginBtn.classList.add('loading');
+            loginBtn.disabled = true;
+
+            // Log security attempt
+            console.log(`[SECURITY] Admin login attempt for user: ${username} at ${new Date().toISOString()}`);
+        });
+    }
+
+    // Input animations
+    document.querySelectorAll('.admin-input-group .form-control').forEach(input => {
+        input.addEventListener('focus', function () {
+            this.parentElement.style.transform = 'scale(1.02)';
+        });
+
+        input.addEventListener('blur', function () {
+            this.parentElement.style.transform = 'scale(1)';
+        });
+    });
+
+    // Load stats on page load
+    document.addEventListener('DOMContentLoaded', function () {
+        console.log('DOM loaded, fetching stats...');
+        fetchStats();
+        setInterval(fetchStats, 30000); // Refresh every 30 seconds
+        createParticles();
+
+        // Check for return from failed login
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('error')) {
+            showStatus('Invalid credentials. Please try again.', 'danger');
+        }
+    });
+
+    // Security hotkey (Ctrl+Shift+A for audit mode)
+    document.addEventListener('keydown', function (e) {
+        if (e.ctrlKey && e.shiftKey && e.key === 'A') {
+            e.preventDefault();
+            showStatus('🔒 Security audit mode activated - All actions will be logged', 'info');
+            console.log('[AUDIT] Admin login page audit mode activated at ' + new Date().toISOString());
+
+            // Visual feedback
+            document.body.style.filter = 'invert(1) hue-rotate(180deg)';
+            setTimeout(() => {
+                document.body.style.filter = '';
+            }, 1000);
+        }
+    });
+</script>
+{% endblock %}

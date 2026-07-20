@@ -1,0 +1,568 @@
+{% extends "base.html" %}
+
+{% block title %}Register - Intelligent Attendance System{% endblock %}
+
+{% block extra_css %}
+<style>
+    .register-wrapper {
+        min-height: calc(100vh - 200px);
+        display: flex;
+        align-items: center;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 40px 0;
+    }
+    
+    .register-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border: none;
+        border-radius: 30px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        overflow: hidden;
+        animation: slideUp 0.6s ease-out;
+    }
+    
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(50px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .register-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 40px 30px;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .register-header::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        animation: rotate 20s linear infinite;
+    }
+    
+    @keyframes rotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+    
+    .register-header h2 {
+        color: white;
+        font-size: 2.5rem;
+        font-weight: 800;
+        margin-bottom: 10px;
+        position: relative;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    }
+    
+    .register-header p {
+        color: rgba(255,255,255,0.9);
+        font-size: 1.1rem;
+        position: relative;
+    }
+    
+    .register-header .header-icon {
+        width: 80px;
+        height: 80px;
+        background: rgba(255,255,255,0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 20px;
+        font-size: 2.5rem;
+        color: white;
+        border: 3px solid rgba(255,255,255,0.3);
+        animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+        0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,255,255,0.4); }
+        70% { transform: scale(1.05); box-shadow: 0 0 0 20px rgba(255,255,255,0); }
+        100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,255,255,0); }
+    }
+    
+    .register-body {
+        padding: 40px;
+    }
+    
+    .form-floating {
+        margin-bottom: 20px;
+    }
+    
+    .form-floating > .form-control {
+        border-radius: 15px;
+        border: 2px solid #e9ecef;
+        padding: 1rem 1rem;
+        height: calc(3.5rem + 2px);
+        transition: all 0.3s;
+    }
+    
+    .form-floating > .form-control:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        transform: translateY(-2px);
+    }
+    
+    .form-floating > label {
+        padding: 1rem 1rem;
+        color: #6c757d;
+    }
+    
+    .input-icon {
+        position: relative;
+    }
+    
+    .input-icon i {
+        position: absolute;
+        left: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #667eea;
+        font-size: 1.2rem;
+        z-index: 10;
+    }
+    
+    .input-icon .form-control {
+        padding-left: 45px;
+    }
+    
+    .password-strength {
+        margin-top: 5px;
+    }
+    
+    .strength-bar {
+        height: 5px;
+        background: #e9ecef;
+        border-radius: 5px;
+        overflow: hidden;
+        margin-bottom: 5px;
+    }
+    
+    .strength-bar-fill {
+        height: 100%;
+        width: 0;
+        transition: width 0.3s, background-color 0.3s;
+    }
+    
+    .strength-text {
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
+    
+    .btn-register {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 15px;
+        padding: 15px;
+        font-weight: 600;
+        font-size: 1.2rem;
+        color: white;
+        width: 100%;
+        transition: all 0.3s;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .btn-register::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+        transition: left 0.5s;
+    }
+    
+    .btn-register:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-register:hover::before {
+        left: 100%;
+    }
+    
+    .btn-register i {
+        margin-right: 10px;
+    }
+    
+    .login-link {
+        text-align: center;
+        margin-top: 25px;
+        padding-top: 25px;
+        border-top: 2px solid #e9ecef;
+    }
+    
+    .login-link a {
+        color: #667eea;
+        text-decoration: none;
+        font-weight: 600;
+        transition: color 0.3s;
+    }
+    
+    .login-link a:hover {
+        color: #764ba2;
+        text-decoration: underline;
+    }
+    
+    .feature-badges {
+        display: flex;
+        justify-content: center;
+        gap: 15px;
+        margin-top: 30px;
+    }
+    
+    .feature-badge {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 8px 20px;
+        border-radius: 50px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        animation: float 3s ease-in-out infinite;
+    }
+    
+    .feature-badge:nth-child(2) {
+        animation-delay: 0.2s;
+    }
+    
+    .feature-badge:nth-child(3) {
+        animation-delay: 0.4s;
+    }
+    
+    @keyframes float {
+        0% { transform: translateY(0px); }
+        50% { transform: translateY(-5px); }
+        100% { transform: translateY(0px); }
+    }
+    
+    .verification-notice {
+        background: linear-gradient(135deg, #fff3cd, #fff8e7);
+        border-left: 4px solid #ffc107;
+        border-radius: 10px;
+        padding: 15px;
+        margin-top: 25px;
+        animation: slideIn 0.5s ease-out;
+    }
+    
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateX(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+    
+    .floating-shapes {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        overflow: hidden;
+    }
+    
+    .shape {
+        position: absolute;
+        background: rgba(255,255,255,0.1);
+        border-radius: 50%;
+        animation: floatShape 15s infinite linear;
+    }
+    
+    .shape1 {
+        width: 100px;
+        height: 100px;
+        top: 10%;
+        left: 10%;
+        animation-duration: 20s;
+    }
+    
+    .shape2 {
+        width: 150px;
+        height: 150px;
+        bottom: 10%;
+        right: 10%;
+        animation-duration: 25s;
+        animation-direction: reverse;
+    }
+    
+    .shape3 {
+        width: 70px;
+        height: 70px;
+        top: 50%;
+        right: 20%;
+        animation-duration: 18s;
+    }
+    
+    @keyframes floatShape {
+        from { transform: rotate(0deg) translate(0, 0); }
+        to { transform: rotate(360deg) translate(50px, 50px); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="register-wrapper">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="register-card">
+                    <div class="register-header">
+                        <div class="floating-shapes">
+                            <div class="shape shape1"></div>
+                            <div class="shape shape2"></div>
+                            <div class="shape shape3"></div>
+                        </div>
+                        <div class="header-icon">
+                            <i class="fas fa-user-plus"></i>
+                        </div>
+                        <h2>Create Account</h2>
+                        <p>Join the Intelligent Attendance System</p>
+                    </div>
+                    
+                    <div class="register-body">
+                        <form method="POST" action="{{ url_for('register') }}" id="registerForm">
+                            <!-- Personal Information -->
+                            <h5 class="mb-3">
+                                <i class="fas fa-user-circle text-primary me-2"></i>
+                                Personal Information
+                            </h5>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="input-icon mb-3">
+                                        <i class="fas fa-user"></i>
+                                        <input type="text" class="form-control" id="name" name="name" 
+                                               placeholder="Full Name" required>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="input-icon mb-3">
+                                        <i class="fas fa-envelope"></i>
+                                        <input type="email" class="form-control" id="email" name="email" 
+                                               placeholder="Email Address" required>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="input-icon mb-3">
+                                        <i class="fas fa-phone"></i>
+                                        <input type="tel" class="form-control" id="phone" name="phone" 
+                                               placeholder="Phone Number">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- ID Information -->
+                            <h5 class="mb-3 mt-4">
+                                <i class="fas fa-id-card text-primary me-2"></i>
+                                ID Information
+                            </h5>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="input-icon mb-3">
+                                        <i class="fas fa-graduation-cap"></i>
+                                        <input type="text" class="form-control" id="moodle_id" name="moodle_id" 
+                                               placeholder="Moodle ID" required>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="input-icon mb-3">
+                                        <i class="fas fa-id-badge"></i>
+                                        <input type="text" class="form-control" id="student_id" name="student_id" 
+                                               placeholder="Student ID">
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="input-icon mb-3">
+                                        <i class="fas fa-fingerprint"></i>
+                                        <input type="text" class="form-control" id="aadhaar" name="aadhaar" 
+                                               placeholder="Aadhaar Number" maxlength="12" 
+                                               pattern="\d{12}" title="12 digit Aadhaar number">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Account Security -->
+                            <h5 class="mb-3 mt-4">
+                                <i class="fas fa-lock text-primary me-2"></i>
+                                Account Security
+                            </h5>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="input-icon mb-2">
+                                        <i class="fas fa-lock"></i>
+                                        <input type="password" class="form-control" id="password" name="password" 
+                                               placeholder="Password" required>
+                                    </div>
+                                    <div class="password-strength">
+                                        <div class="strength-bar">
+                                            <div class="strength-bar-fill" id="strengthBar"></div>
+                                        </div>
+                                        <span class="strength-text" id="strengthText">
+                                            <i class="fas fa-info-circle me-1"></i>
+                                            Min 8 chars with uppercase, number & special char
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="input-icon mb-3">
+                                        <i class="fas fa-lock"></i>
+                                        <input type="password" class="form-control" id="confirm_password" 
+                                               name="confirm_password" placeholder="Confirm Password" required>
+                                    </div>
+                                    <small class="text-muted" id="passwordMatch"></small>
+                                </div>
+                            </div>
+                            
+                            <!-- Terms -->
+                            <div class="form-check mb-4 mt-4">
+                                <input class="form-check-input" type="checkbox" id="terms" required>
+                                <label class="form-check-label" for="terms">
+                                    I agree to the <a href="#" class="text-primary">Terms and Conditions</a> and 
+                                    <a href="#" class="text-primary">Privacy Policy</a>
+                                </label>
+                            </div>
+                            
+                            <!-- Submit Button -->
+                            <button type="submit" class="btn-register" id="submitBtn">
+                                <i class="fas fa-user-plus"></i>
+                                Create Account
+                            </button>
+                            
+                            <!-- Verification Notice -->
+                            <div class="verification-notice">
+                                <i class="fas fa-shield-alt me-2 text-warning"></i>
+                                <strong>Note:</strong> After registration, your IDs will be verified by admin before you can login.
+                            </div>
+                        </form>
+                        
+                        <div class="login-link">
+                            Already have an account? 
+                            <a href="{{ url_for('login') }}">
+                                Login here <i class="fas fa-arrow-right ms-1"></i>
+                            </a>
+                        </div>
+                        
+                        <!-- Feature Badges -->
+                        <div class="feature-badges">
+                            <span class="feature-badge">
+                                <i class="fas fa-face-smile me-1"></i>Face Recognition
+                            </span>
+                            <span class="feature-badge">
+                                <i class="fas fa-shield-alt me-1"></i> Secure Check-in
+                            </span>
+                            <span class="feature-badge">
+                                <i class="fas fa-shield-halved me-1"></i>Fraud Detection
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Password strength checker
+document.getElementById('password').addEventListener('input', function() {
+    const password = this.value;
+    const strengthBar = document.getElementById('strengthBar');
+    const strengthText = document.getElementById('strengthText');
+    
+    let strength = 0;
+    let feedback = [];
+    
+    if (password.length >= 8) {
+        strength += 25;
+    } else {
+        feedback.push('at least 8 characters');
+    }
+    
+    if (password.match(/[A-Z]/)) {
+        strength += 25;
+    } else {
+        feedback.push('uppercase letter');
+    }
+    
+    if (password.match(/[a-z]/)) {
+        strength += 25;
+    } else {
+        feedback.push('lowercase letter');
+    }
+    
+    if (password.match(/[0-9]/)) {
+        strength += 12.5;
+    } else {
+        feedback.push('number');
+    }
+    
+    if (password.match(/[!@#$%^&*(),.?":{}|<>]/)) {
+        strength += 12.5;
+    } else {
+        feedback.push('special character');
+    }
+    
+    strengthBar.style.width = strength + '%';
+    
+    if (strength < 50) {
+        strengthBar.style.background = '#dc3545';
+        strengthText.innerHTML = `<i class="fas fa-exclamation-circle me-1"></i>Weak: Missing ${feedback.join(', ')}`;
+    } else if (strength < 75) {
+        strengthBar.style.background = '#ffc107';
+        strengthText.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Medium password strength';
+    } else {
+        strengthBar.style.background = '#28a745';
+        strengthText.innerHTML = '<i class="fas fa-check-circle me-1"></i>Strong password';
+    }
+});
+
+// Password match checker
+document.getElementById('confirm_password').addEventListener('input', function() {
+    const password = document.getElementById('password').value;
+    const confirm = this.value;
+    const matchText = document.getElementById('passwordMatch');
+    
+    if (password === confirm) {
+        matchText.innerHTML = '<i class="fas fa-check-circle text-success me-1"></i>Passwords match';
+        matchText.style.color = '#28a745';
+        document.getElementById('submitBtn').disabled = false;
+    } else {
+        matchText.innerHTML = '<i class="fas fa-times-circle text-danger me-1"></i>Passwords do not match';
+        matchText.style.color = '#dc3545';
+        document.getElementById('submitBtn').disabled = true;
+    }
+});
+
+// Form submission animation
+document.getElementById('registerForm').addEventListener('submit', function(e) {
+    const btn = document.getElementById('submitBtn');
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Creating Account...';
+    btn.disabled = true;
+});
+</script>
+{% endblock %}

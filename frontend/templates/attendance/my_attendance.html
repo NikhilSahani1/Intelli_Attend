@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}My Attendance{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-history me-2"></i>My Attendance History
+                    </h4>
+                </div>
+                <div class="card-body">
+                    {% if attendance %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Event</th>
+                                        <th>Lecture</th>
+                                        <th>Date</th>
+                                        <th>Status</th>
+                                        <th>Verification</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for record in attendance %}
+                                    <tr>
+                                        <td>{{ record.event_name }}</td>
+                                        <td>{{ record.lecture_name }}</td>
+                                        <td>{{ record.date }}</td>
+                                        <td>
+                                            <span class="badge bg-success">{{ record.status }}</span>
+                                        </td>
+                                        <td>
+                                            {% if record.verified %}
+                                                <i class="fas fa-check-circle text-success"></i> Verified
+                                            {% else %}
+                                                <i class="fas fa-times-circle text-danger"></i> Pending
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-clock fa-4x text-muted mb-3"></i>
+                            <h5>No attendance records found</h5>
+                            <p class="text-muted">Register for events to start building your attendance history.</p>
+                            <a href="{{ url_for('events') }}" class="btn btn-primary">
+                                <i class="fas fa-calendar-alt me-2"></i>Browse Events
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

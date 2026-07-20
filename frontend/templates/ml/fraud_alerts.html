@@ -1,0 +1,323 @@
+{% extends "base.html" %}
+
+{% block title %}Fraud Alerts{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-danger text-white">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h3 class="mb-1">Fraud Alerts</h3>
+                            <p class="mb-0 opacity-75">Real-time fraud detection and alerts</p>
+                        </div>
+                        <div>
+                            <span class="badge bg-light text-dark p-3">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                {{ alerts|length }} Active Alerts
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert Statistics -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <h6 class="text-uppercase small">Critical</h6>
+                    <h3 class="mb-0">{{ stats.critical|default(0) }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <h6 class="text-uppercase small">High</h6>
+                    <h3 class="mb-0">{{ stats.high|default(0) }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h6 class="text-uppercase small">Medium</h6>
+                    <h3 class="mb-0">{{ stats.medium|default(0) }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-secondary text-white">
+                <div class="card-body">
+                    <h6 class="text-uppercase small">Resolved</h6>
+                    <h3 class="mb-0">{{ stats.resolved|default(0) }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <select class="form-select" id="severityFilter">
+                        <option value="">All Severities</option>
+                        <option value="CRITICAL">Critical</option>
+                        <option value="HIGH">High</option>
+                        <option value="MEDIUM">Medium</option>
+                        <option value="LOW">Low</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" id="statusFilter">
+                        <option value="">All Status</option>
+                        <option value="NEW">New</option>
+                        <option value="INVESTIGATING">Investigating</option>
+                        <option value="RESOLVED">Resolved</option>
+                        <option value="FALSE_POSITIVE">False Positive</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <input type="text" class="form-control" id="searchFilter" placeholder="Search user or event...">
+                </div>
+                <div class="col-md-3">
+                    <button class="btn btn-primary w-100" onclick="applyFilters()">
+                        <i class="fas fa-filter me-2"></i>Apply Filters
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alerts List -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="alertsTable">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>User</th>
+                            <th>Event</th>
+                            <th>Alert Type</th>
+                            <th>Severity</th>
+                            <th>Fraud Score</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for alert in alerts %}
+                        <tr class="alert-{{ alert.severity|lower }}">
+                            <td>{{ alert.created_at[:16] }}</td>
+                            <td>
+                                <strong>{{ alert.user_name }}</strong><br>
+                                <small class="text-muted">{{ alert.moodle_id }}</small>
+                            </td>
+                            <td>{{ alert.event_name }}</td>
+                            <td>
+                                <span class="badge bg-info">{{ alert.alert_type }}</span>
+                            </td>
+                            <td>
+                                <span class="badge bg-{{ 
+                                    'danger' if alert.severity == 'CRITICAL' else 
+                                    'warning' if alert.severity == 'HIGH' else 
+                                    'info' if alert.severity == 'MEDIUM' else 
+                                    'secondary' }}">
+                                    {{ alert.severity }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="progress" style="height: 20px; width: 100px;">
+                                    <div class="progress-bar bg-danger" 
+                                         style="width: {{ alert.fraud_score * 100 }}%">
+                                        {{ "%.0f"|format(alert.fraud_score * 100) }}%
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <select class="form-select form-select-sm status-select" 
+                                        onchange="updateStatus({{ alert.id }}, this.value)">
+                                    <option value="NEW" {% if alert.status == 'NEW' %}selected{% endif %}>New</option>
+                                    <option value="INVESTIGATING" {% if alert.status == 'INVESTIGATING' %}selected{% endif %}>Investigating</option>
+                                    <option value="RESOLVED" {% if alert.status == 'RESOLVED' %}selected{% endif %}>Resolved</option>
+                                    <option value="FALSE_POSITIVE" {% if alert.status == 'FALSE_POSITIVE' %}selected{% endif %}>False Positive</option>
+                                </select>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-info" onclick="viewDetails({{ alert.id }})">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-success" onclick="resolveAlert({{ alert.id }})">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Alert Details Modal -->
+<div class="modal fade" id="detailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Alert Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detailsBody">
+                Loading...
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function applyFilters() {
+    const severity = document.getElementById('severityFilter').value;
+    const status = document.getElementById('statusFilter').value;
+    const search = document.getElementById('searchFilter').value.toLowerCase();
+    
+    const rows = document.querySelectorAll('#alertsTable tbody tr');
+    
+    rows.forEach(row => {
+        let show = true;
+        
+        if (severity) {
+            const severityCell = row.querySelector('td:nth-child(5) .badge');
+            if (!severityCell || !severityCell.textContent.includes(severity)) {
+                show = false;
+            }
+        }
+        
+        if (status && show) {
+            const statusSelect = row.querySelector('.status-select');
+            if (statusSelect && statusSelect.value !== status) {
+                show = false;
+            }
+        }
+        
+        if (search && show) {
+            const text = row.textContent.toLowerCase();
+            if (!text.includes(search)) {
+                show = false;
+            }
+        }
+        
+        row.style.display = show ? '' : 'none';
+    });
+}
+
+function updateStatus(alertId, status) {
+    fetch(`/ml/alert/${alertId}/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: status })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('Status updated', 'success');
+        }
+    });
+}
+
+function viewDetails(alertId) {
+    const modal = new bootstrap.Modal(document.getElementById('detailsModal'));
+    document.getElementById('detailsBody').innerHTML = 'Loading...';
+    modal.show();
+    
+    fetch(`/ml/alert/${alertId}`)
+        .then(response => response.json())
+        .then(data => {
+            let html = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Alert Information</h6>
+                        <table class="table table-sm">
+                            <tr><th>ID:</th><td>${data.id}</td></tr>
+                            <tr><th>Type:</th><td>${data.alert_type}</td></tr>
+                            <tr><th>Severity:</th><td>${data.severity}</td></tr>
+                            <tr><th>Status:</th><td>${data.status}</td></tr>
+                            <tr><th>Created:</th><td>${data.created_at}</td></tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>User Information</h6>
+                        <table class="table table-sm">
+                            <tr><th>Name:</th><td>${data.user_name}</td></tr>
+                            <tr><th>Moodle ID:</th><td>${data.moodle_id}</td></tr>
+                            <tr><th>Email:</th><td>${data.email}</td></tr>
+                        </table>
+                    </div>
+                </div>
+                
+                <h6 class="mt-3">Fraud Detection Details</h6>
+                <table class="table table-sm">
+                    <tr><th>Fraud Score:</th><td>${(data.fraud_score * 100).toFixed(1)}%</td></tr>
+                    <tr><th>Description:</th><td>${data.description}</td></tr>
+                </table>
+            `;
+            
+            if (data.metadata) {
+                html += `
+                    <h6 class="mt-3">Additional Metadata</h6>
+                    <pre class="bg-light p-3 rounded"><code>${JSON.stringify(data.metadata, null, 2)}</code></pre>
+                `;
+            }
+            
+            document.getElementById('detailsBody').innerHTML = html;
+        });
+}
+
+function resolveAlert(alertId) {
+    if (confirm('Mark this alert as resolved?')) {
+        fetch(`/ml/alert/${alertId}/resolve`, { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                }
+            });
+    }
+}
+
+function showNotification(message, type) {
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type} alert-dismissible fade show position-fixed top-0 end-0 m-3`;
+    alert.style.zIndex = 9999;
+    alert.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(alert);
+    
+    setTimeout(() => alert.remove(), 3000);
+}
+</script>
+
+<style>
+.alert-critical {
+    background-color: #f8d7da;
+}
+.alert-high {
+    background-color: #fff3cd;
+}
+.alert-medium {
+    background-color: #d1ecf1;
+}
+.alert-low {
+    background-color: #d4edda;
+}
+</style>
+{% endblock %}

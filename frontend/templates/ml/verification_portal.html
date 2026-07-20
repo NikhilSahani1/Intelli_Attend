@@ -1,0 +1,628 @@
+{% extends "base.html" %}
+
+{% block title %}ID Verification Portal{% endblock %}
+
+{% block extra_css %}
+<style>
+.verification-card {
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    transition: all 0.3s;
+    margin-bottom: 20px;
+}
+.verification-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+}
+.verification-card.pending {
+    border-left: 4px solid #ffc107;
+}
+.verification-card.verified {
+    border-left: 4px solid #28a745;
+}
+.verification-card.rejected {
+    border-left: 4px solid #dc3545;
+    opacity: 0.7;
+}
+.id-image {
+    width: 100%;
+    max-height: 200px;
+    object-fit: contain;
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 10px;
+}
+.verification-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    padding: 5px 15px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+.face-match-indicator {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+.face-match-high {
+    background: #d4edda;
+    color: #155724;
+}
+.face-match-medium {
+    background: #fff3cd;
+    color: #856404;
+}
+.face-match-low {
+    background: #f8d7da;
+    color: #721c24;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-primary text-white">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h3 class="mb-1">ID Verification Portal</h3>
+                            <p class="mb-0 opacity-75">Verify user identities and approve registrations</p>
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn btn-light" onclick="showStats()">
+                                <i class="fas fa-chart-bar me-2"></i>Statistics
+                            </button>
+                            <button class="btn btn-light" onclick="refreshQueue()">
+                                <i class="fas fa-sync-alt me-2"></i>Refresh
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Queue Statistics -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <h6 class="text-uppercase small">Pending</h6>
+                    <h2 class="mb-0">{{ stats.pending|default(0) }}</h2>
+                    <small>Awaiting verification</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h6 class="text-uppercase small">Verified Today</h6>
+                    <h2 class="mb-0">{{ stats.verified_today|default(0) }}</h2>
+                    <small>Last 24 hours</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h6 class="text-uppercase small">Avg Response Time</h6>
+                    <h2 class="mb-0">{{ stats.avg_response_time|default(0) }}m</h2>
+                    <small>Minutes per verification</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-secondary text-white">
+                <div class="card-body">
+                    <h6 class="text-uppercase small">Total Users</h6>
+                    <h2 class="mb-0">{{ stats.total_users|default(0) }}</h2>
+                    <small>Registered users</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <ul class="nav nav-tabs mb-4" id="verificationTabs">
+        <li class="nav-item">
+            <a class="nav-link active" data-bs-toggle="tab" href="#pending">
+                <i class="fas fa-clock me-2"></i>Pending
+                <span class="badge bg-warning ms-2">{{ pending_count|default(0) }}</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#verified">
+                <i class="fas fa-check-circle me-2"></i>Verified
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#rejected">
+                <i class="fas fa-times-circle me-2"></i>Rejected
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#all">
+                <i class="fas fa-list me-2"></i>All
+            </a>
+        </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content">
+        <!-- Pending Tab -->
+        <div class="tab-pane fade show active" id="pending">
+            <div class="row">
+                {% for verification in pending_verifications %}
+                <div class="col-xl-6">
+                    <div class="verification-card pending">
+                        <div class="card-body">
+                            <span class="verification-badge bg-warning">PENDING</span>
+                            
+                            <div class="row">
+                                <!-- User Info -->
+                                <div class="col-md-6">
+                                    <h5 class="mb-3">{{ verification.user_name }}</h5>
+                                    <table class="table table-sm">
+                                        <tr>
+                                            <th>Moodle ID:</th>
+                                            <td>{{ verification.moodle_id }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Email:</th>
+                                            <td>{{ verification.email }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Phone:</th>
+                                            <td>{{ verification.phone|default('Not provided') }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Registered:</th>
+                                            <td>{{ verification.created_at[:10] }}</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                                
+                                <!-- ID Details -->
+                                <div class="col-md-6">
+                                    <h6 class="mb-3">ID Details</h6>
+                                    <table class="table table-sm">
+                                        <tr>
+                                            <th>ID Type:</th>
+                                            <td>
+                                                <span class="badge bg-info">{{ verification.id_type }}</span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th>ID Number:</th>
+                                            <td><code>{{ verification.id_number }}</code></td>
+                                        </tr>
+                                        {% if verification.id_image %}
+                                        <tr>
+                                            <th>Document:</th>
+                                            <td>
+                                                <button class="btn btn-sm btn-outline-primary" 
+                                                        onclick="viewDocument('{{ verification.id_image }}')">
+                                                    <i class="fas fa-eye"></i> View
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        {% endif %}
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Face Match (if available) -->
+                            {% if verification.face_match %}
+                            <div class="alert alert-info mt-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="face-match-indicator face-match-{{ verification.face_match.level }}">
+                                        <i class="fas fa-{{ 'check' if verification.face_match.score > 0.7 else 'question' }}"></i>
+                                    </div>
+                                    <div class="ms-3 flex-grow-1">
+                                        <strong>Face Match Confidence</strong>
+                                        <div class="progress mt-1">
+                                            <div class="progress-bar bg-{{ 
+                                                'success' if verification.face_match.score > 0.7 else 
+                                                'warning' if verification.face_match.score > 0.4 else 
+                                                'danger' 
+                                            }}" style="width: {{ verification.face_match.score * 100 }}%">
+                                                {{ "%.0f"|format(verification.face_match.score * 100) }}%
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            <!-- Verification Actions -->
+                            <div class="row mt-4">
+                                <div class="col-md-6">
+                                    <textarea class="form-control" id="notes{{ verification.id }}" 
+                                              rows="2" placeholder="Verification notes..."></textarea>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="d-grid gap-2">
+                                        <button class="btn btn-success" onclick="verify({{ verification.id }}, 'VERIFIED')">
+                                            <i class="fas fa-check-circle me-2"></i>Approve
+                                        </button>
+                                        <button class="btn btn-danger" onclick="verify({{ verification.id }}, 'REJECTED')">
+                                            <i class="fas fa-times-circle me-2"></i>Reject
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Similarity Check -->
+                            <div class="mt-3">
+                                <button class="btn btn-sm btn-outline-secondary" 
+                                        onclick="checkSimilarity({{ verification.user_id }})">
+                                    <i class="fas fa-search me-2"></i>Check for Duplicates
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body text-center py-5">
+                            <i class="fas fa-check-circle fa-4x text-success mb-3"></i>
+                            <h5>No Pending Verifications</h5>
+                            <p class="text-muted">All user IDs have been verified</p>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Verified Tab -->
+        <div class="tab-pane fade" id="verified">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>User</th>
+                            <th>ID Type</th>
+                            <th>ID Number</th>
+                            <th>Verified By</th>
+                            <th>Verified At</th>
+                            <th>Notes</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for verification in verified_verifications %}
+                        <tr>
+                            <td>{{ verification.created_at[:10] }}</td>
+                            <td>
+                                <strong>{{ verification.user_name }}</strong><br>
+                                <small>{{ verification.moodle_id }}</small>
+                            </td>
+                            <td>{{ verification.id_type }}</td>
+                            <td><code>{{ verification.id_number }}</code></td>
+                            <td>{{ verification.verified_by_name }}</td>
+                            <td>{{ verification.verified_at[:16] }}</td>
+                            <td>
+                                <small>{{ verification.notes|truncate(50) }}</small>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-danger" 
+                                        onclick="revertVerification({{ verification.id }})">
+                                    <i class="fas fa-undo"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Rejected Tab -->
+        <div class="tab-pane fade" id="rejected">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>User</th>
+                            <th>ID Type</th>
+                            <th>ID Number</th>
+                            <th>Rejected By</th>
+                            <th>Reason</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for verification in rejected_verifications %}
+                        <tr>
+                            <td>{{ verification.created_at[:10] }}</td>
+                            <td>
+                                <strong>{{ verification.user_name }}</strong><br>
+                                <small>{{ verification.moodle_id }}</small>
+                            </td>
+                            <td>{{ verification.id_type }}</td>
+                            <td><code>{{ verification.id_number }}</code></td>
+                            <td>{{ verification.rejected_by_name }}</td>
+                            <td>
+                                <small class="text-danger">{{ verification.notes }}</small>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-success" 
+                                        onclick="reopenVerification({{ verification.id }})">
+                                    <i class="fas fa-redo"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- All Tab -->
+        <div class="tab-pane fade" id="all">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>User</th>
+                            <th>ID Type</th>
+                            <th>ID Number</th>
+                            <th>Status</th>
+                            <th>Verified By</th>
+                            <th>Verified At</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for verification in all_verifications %}
+                        <tr>
+                            <td>{{ verification.created_at[:10] }}</td>
+                            <td>
+                                <strong>{{ verification.user_name }}</strong><br>
+                                <small>{{ verification.moodle_id }}</small>
+                            </td>
+                            <td>{{ verification.id_type }}</td>
+                            <td><code>{{ verification.id_number }}</code></td>
+                            <td>
+                                <span class="badge bg-{{ 
+                                    'success' if verification.status == 'VERIFIED' else 
+                                    'danger' if verification.status == 'REJECTED' else 
+                                    'warning' 
+                                }}">{{ verification.status }}</span>
+                            </td>
+                            <td>{{ verification.verified_by_name or '-' }}</td>
+                            <td>{{ verification.verified_at[:16] or '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Document Viewer Modal -->
+<div class="modal fade" id="documentModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">ID Document</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img src="" id="documentImage" class="img-fluid">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Modal -->
+<div class="modal fade" id="statsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Verification Statistics</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <canvas id="statsChart" height="300"></canvas>
+                
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <h6>Verification Timeline</h6>
+                        <canvas id="timelineChart" height="200"></canvas>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>ID Type Distribution</h6>
+                        <canvas id="typeChart" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function verify(verificationId, status) {
+    const notes = document.getElementById('notes' + verificationId).value;
+    
+    if (status === 'REJECTED' && !notes) {
+        alert('Please provide a reason for rejection');
+        return;
+    }
+    
+    if (!confirm(`Are you sure you want to ${status === 'VERIFIED' ? 'approve' : 'reject'} this verification?`)) {
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('verification_id', verificationId);
+    formData.append('status', status);
+    formData.append('notes', notes);
+    
+    fetch('/admin/update-verification-status', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    });
+}
+
+function viewDocument(imagePath) {
+    document.getElementById('documentImage').src = imagePath;
+    new bootstrap.Modal(document.getElementById('documentModal')).show();
+}
+
+function checkSimilarity(userId) {
+    fetch(`/admin/check-user-similarity/${userId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.similar_users && data.similar_users.length > 0) {
+                let message = 'Potential duplicate users found:\n\n';
+                data.similar_users.forEach(user => {
+                    message += `- ${user.name} (${user.moodle_id}): ${user.similarity}% match\n`;
+                });
+                alert(message);
+            } else {
+                alert('No similar users found');
+            }
+        });
+}
+
+function revertVerification(verificationId) {
+    if (!confirm('Revert this verification to pending status?')) {
+        return;
+    }
+    
+    fetch(`/admin/verification/${verificationId}/revert`, { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            }
+        });
+}
+
+function reopenVerification(verificationId) {
+    if (!confirm('Reopen this rejected verification?')) {
+        return;
+    }
+    
+    fetch(`/admin/verification/${verificationId}/reopen`, { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            }
+        });
+}
+
+function showStats() {
+    const modal = new bootstrap.Modal(document.getElementById('statsModal'));
+    modal.show();
+    
+    // Initialize charts after modal is shown
+    setTimeout(() => {
+        // Status distribution chart
+        const ctx1 = document.getElementById('statsChart').getContext('2d');
+        new Chart(ctx1, {
+            type: 'bar',
+            data: {
+                labels: ['Pending', 'Verified', 'Rejected'],
+                datasets: [{
+                    label: 'Verifications',
+                    data: [{{ stats.pending }}, {{ stats.verified_total }}, {{ stats.rejected_total }}],
+                    backgroundColor: ['#ffc107', '#28a745', '#dc3545']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+        
+        // Timeline chart
+        const ctx2 = document.getElementById('timelineChart').getContext('2d');
+        new Chart(ctx2, {
+            type: 'line',
+            data: {
+                labels: {{ timeline_labels|tojson }},
+                datasets: [{
+                    label: 'Verifications',
+                    data: {{ timeline_data|tojson }},
+                    borderColor: '#4361ee',
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+        
+        // ID type distribution
+        const ctx3 = document.getElementById('typeChart').getContext('2d');
+        new Chart(ctx3, {
+            type: 'doughnut',
+            data: {
+                labels: {{ type_labels|tojson }},
+                datasets: [{
+                    data: {{ type_data|tojson }},
+                    backgroundColor: ['#4361ee', '#f72585', '#4cc9f0', '#f8961e']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+    }, 500);
+}
+
+function refreshQueue() {
+    location.reload();
+}
+
+// Auto-refresh every 30 seconds
+setInterval(() => {
+    if (document.getElementById('pending').classList.contains('active')) {
+        fetch('/admin/verification/pending-count')
+            .then(response => response.json())
+            .then(data => {
+                if (data.count > 0) {
+                    document.querySelector('.badge.bg-warning').textContent = data.count;
+                }
+            });
+    }
+}, 30000);
+</script>
+{% endblock %}

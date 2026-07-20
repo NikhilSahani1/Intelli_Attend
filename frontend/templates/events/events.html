@@ -1,0 +1,283 @@
+{% extends "base.html" %}
+
+{% block title %}Events{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-primary text-white">
+                <div class="card-body p-4">
+                    <h3 class="mb-0">
+                        <i class="fas fa-calendar-alt me-2"></i>Available Events
+                    </h3>
+                    <p class="mb-0 mt-2 opacity-75">Browse and register for upcoming events</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <form method="GET" class="row g-3" id="filterForm">
+                        <div class="col-md-4">
+                            <input type="text" class="form-control" name="search" placeholder="Search events..." 
+                                   value="{{ request.args.get('search', '') }}">
+                        </div>
+                        <div class="col-md-3">
+                            <input type="date" class="form-control" name="date" value="{{ request.args.get('date', '') }}">
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-select" name="status">
+                                <option value="">All Events</option>
+                                <option value="upcoming" {% if request.args.get('status') == 'upcoming' %}selected{% endif %}>Upcoming</option>
+                                <option value="ongoing" {% if request.args.get('status') == 'ongoing' %}selected{% endif %}>Ongoing</option>
+                                <option value="past" {% if request.args.get('status') == 'past' %}selected{% endif %}>Past</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-search me-2"></i>Filter
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Events Grid -->
+    <div class="row g-4" id="eventsGrid">
+        {% for event in events %}
+        <div class="col-md-6 col-lg-4" data-event-id="{{ event.id }}">
+            <div class="card h-100 event-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <h5 class="card-title mb-0">{{ event.name }}</h5>
+                        <span class="badge bg-{{ 'success' if event.date >= now().strftime('%Y-%m-%d') else 'secondary' }}">
+                            {{ 'Upcoming' if event.date >= now().strftime('%Y-%m-%d') else 'Past' }}
+                        </span>
+                    </div>
+                    
+                    <div class="event-details mb-3">
+                        <p class="mb-2">
+                            <i class="fas fa-calendar text-primary me-2"></i>{{ event.date }}
+                        </p>
+                        <p class="mb-2">
+                            <i class="fas fa-clock text-primary me-2"></i>{{ event.time or 'TBD' }}
+                        </p>
+                        <p class="mb-2">
+                            <i class="fas fa-map-marker-alt text-primary me-2"></i>{{ event.venue|default('TBD') }}
+                        </p>
+                        <p class="mb-2">
+                            <i class="fas fa-users text-primary me-2"></i>
+                            <strong>Registrations:</strong> 
+                            <span class="registration-count" id="regCount-{{ event.id }}">{{ event.registration_count }}</span>/{{ event.max_capacity }}
+                        </p>
+                    </div>
+
+                    <!-- Progress Bar -->
+                    <div class="progress mb-3" style="height: 8px;">
+                        {% set percentage = (event.registration_count / event.max_capacity * 100) if event.max_capacity > 0 else 0 %}
+                        <div class="progress-bar bg-{{ 'danger' if percentage >= 90 else 'warning' if percentage >= 70 else 'success' }}" 
+                             id="progressBar-{{ event.id }}"
+                             style="width: {{ percentage }}%">
+                        </div>
+                    </div>
+
+                    <!-- Registration Status -->
+                    <div class="mt-3" id="regStatus-{{ event.id }}">
+                        {% if event.registered %}
+                            <div class="alert alert-success mb-0 py-2 text-center">
+                                <i class="fas fa-check-circle me-2"></i>
+                                <strong>✓ You are registered</strong>
+                            </div>
+                        {% else %}
+                            {% if event.registration_count >= event.max_capacity %}
+                                <button class="btn btn-secondary w-100" disabled>
+                                    <i class="fas fa-times-circle me-2"></i>Event Full
+                                </button>
+                            {% elif event.date < now().strftime('%Y-%m-%d') %}
+                                <button class="btn btn-secondary w-100" disabled>
+                                    <i class="fas fa-clock me-2"></i>Event Ended
+                                </button>
+                            {% else %}
+                                <a href="{{ url_for('register_event', event_id=event.id) }}" 
+                                   class="btn btn-primary w-100 register-link mb-2"
+                                   data-event-id="{{ event.id }}"
+                                   data-event-name="{{ event.name }}">
+                                    <i class="fas fa-check-circle me-2"></i>Register Now
+                                </a>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+
+                    <!-- SECURE CHECK-IN REMOVED - Now only available in admin panel -->
+                </div>
+                <div class="card-footer bg-white">
+                    <small class="text-muted">
+                        <i class="fas fa-clock me-1"></i>
+                        Created: {{ event.created_at[:10] if event.created_at else 'N/A' }}
+                    </small>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-calendar-times fa-4x text-muted mb-3"></i>
+                    <h5>No Events Found</h5>
+                    <p class="text-muted">There are no events matching your criteria.</p>
+                    <a href="{{ url_for('events') }}" class="btn btn-primary">
+                        <i class="fas fa-redo-alt me-2"></i>Reset Filters
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<style>
+.event-card {
+    transition: transform 0.3s, box-shadow 0.3s;
+    border: none;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+}
+.event-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+}
+.event-details p {
+    font-size: 0.95rem;
+    color: #555;
+    margin-bottom: 0.5rem;
+}
+.progress {
+    border-radius: 4px;
+    background-color: #f0f0f0;
+}
+.registration-count {
+    font-weight: bold;
+    color: #007bff;
+}
+</style>
+
+<script>
+$(document).ready(function() {
+    // Handle registration link click
+    $('.register-link').on('click', function(e) {
+        e.preventDefault();
+        const link = $(this);
+        const eventId = link.data('event-id');
+        const eventName = link.data('event-name');
+        const originalHtml = link.html();
+        
+        // Show loading
+        link.html('<i class="fas fa-spinner fa-spin me-2"></i>Registering...');
+        link.prop('disabled', true);
+        
+        // Send registration request
+        $.ajax({
+            url: `/event/${eventId}/register`,
+            type: 'GET',
+            success: function(response) {
+                // Update the UI
+                updateRegistrationUI(eventId, eventName);
+                showNotification('Successfully registered for ' + eventName, 'success');
+            },
+            error: function(xhr) {
+                let errorMsg = 'Registration failed';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMsg = xhr.responseJSON.message;
+                }
+                showNotification(errorMsg, 'danger');
+                link.html(originalHtml);
+                link.prop('disabled', false);
+            }
+        });
+    });
+    
+    
+    function updateRegistrationUI(eventId, eventName) {
+        // Update registration count
+        const regCountSpan = $(`#regCount-${eventId}`);
+        let currentCount = parseInt(regCountSpan.text());
+        const newCount = currentCount + 1;
+        regCountSpan.text(newCount);
+        
+        // Update progress bar
+        const maxCapacity = 100;
+        const percentage = (newCount / maxCapacity) * 100;
+        const progressBar = $(`#progressBar-${eventId}`);
+        progressBar.css('width', percentage + '%');
+        
+        // Update progress bar color
+        progressBar.removeClass('bg-success bg-warning bg-danger');
+        if (percentage >= 90) {
+            progressBar.addClass('bg-danger');
+        } else if (percentage >= 70) {
+            progressBar.addClass('bg-warning');
+        } else {
+            progressBar.addClass('bg-success');
+        }
+        
+        // Change button to registered status
+        const regStatusDiv = $(`#regStatus-${eventId}`);
+        regStatusDiv.html(`
+            <div class="alert alert-success mb-2 py-2 text-center">
+                <i class="fas fa-check-circle me-2"></i>
+                <strong>✓ You are registered</strong>
+            </div>
+        `);
+    }
+    
+    function showNotification(message, type) {
+        // Check if toast container exists
+        if ($('#toast-container').length === 0) {
+            $('body').append('<div id="toast-container" class="position-fixed bottom-0 end-0 p-3" style="z-index: 11"></div>');
+        }
+        
+        const toastId = 'toast-' + Date.now();
+        let bgClass = 'bg-success';
+        let icon = 'fa-check-circle';
+        
+        if (type === 'danger') {
+            bgClass = 'bg-danger';
+            icon = 'fa-exclamation-circle';
+        } else if (type === 'info') {
+            bgClass = 'bg-info';
+            icon = 'fa-info-circle';
+        } else if (type === 'warning') {
+            bgClass = 'bg-warning';
+            icon = 'fa-exclamation-triangle';
+        }
+        
+        const toastHtml = `
+            <div id="${toastId}" class="toast align-items-center text-white ${bgClass} border-0" role="alert" data-bs-autohide="true" data-bs-delay="3000">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="fas ${icon} me-2"></i>
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            </div>
+        `;
+        
+        $('#toast-container').append(toastHtml);
+        const toast = new bootstrap.Toast($(`#${toastId}`));
+        toast.show();
+        
+        // Remove toast after hidden
+        $(`#${toastId}`).on('hidden.bs.toast', function() {
+            $(this).remove();
+        });
+    }
+});
+</script>
+{% endblock %}

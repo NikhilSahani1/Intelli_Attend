@@ -1,0 +1,662 @@
+{% extends "base.html" %}
+
+{% block title %}Anomaly Reports{% endblock %}
+
+{% block extra_css %}
+<style>
+.anomaly-card {
+    transition: all 0.3s;
+    border-left: 4px solid transparent;
+}
+.anomaly-card:hover {
+    transform: translateX(5px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+.anomaly-card.critical {
+    border-left-color: #dc3545;
+}
+.anomaly-card.high {
+    border-left-color: #fd7e14;
+}
+.anomaly-card.medium {
+    border-left-color: #ffc107;
+}
+.anomaly-card.low {
+    border-left-color: #20c997;
+}
+.timeline-item {
+    position: relative;
+    padding-left: 30px;
+    margin-bottom: 20px;
+}
+.timeline-item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #e9ecef;
+}
+.timeline-item::after {
+    content: '';
+    position: absolute;
+    left: -4px;
+    top: 0;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #4361ee;
+}
+.heatmap-cell {
+    width: 30px;
+    height: 30px;
+    margin: 2px;
+    display: inline-block;
+    border-radius: 4px;
+}
+.heatmap-low { background-color: #ebf5ff; }
+.heatmap-medium { background-color: #b8d9ff; }
+.heatmap-high { background-color: #7ab2ff; }
+.heatmap-critical { background-color: #3d8bff; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-gradient-danger text-white">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h3 class="mb-1">Anomaly Detection Reports</h3>
+                            <p class="mb-0 opacity-75">ML-powered analysis of unusual attendance patterns</p>
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn btn-light" onclick="exportReport()">
+                                <i class="fas fa-download me-2"></i>Export
+                            </button>
+                            <button class="btn btn-light" onclick="refreshData()">
+                                <i class="fas fa-sync-alt me-2"></i>Refresh
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Date Range Selector -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form id="reportForm" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label">Report Type</label>
+                    <select class="form-select" id="reportType">
+                        <option value="daily">Daily Analysis</option>
+                        <option value="weekly" selected>Weekly Analysis</option>
+                        <option value="monthly">Monthly Analysis</option>
+                        <option value="custom">Custom Range</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Start Date</label>
+                    <input type="date" class="form-control" id="startDate" value="{{ start_date }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">End Date</label>
+                    <input type="date" class="form-control" id="endDate" value="{{ end_date }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Min Anomaly Score</label>
+                    <input type="number" class="form-control" id="minScore" value="0.3" min="0" max="1" step="0.1">
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-chart-line me-2"></i>Generate Report
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Summary Statistics -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h6 class="text-uppercase small">Total Anomalies</h6>
+                    <h2 class="mb-0">{{ summary.total_anomalies|default(0) }}</h2>
+                    <small>{{ summary.period }}</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <h6 class="text-uppercase small">Critical</h6>
+                    <h2 class="mb-0">{{ summary.critical|default(0) }}</h2>
+                    <small>{{ "%.1f"|format(summary.critical_pct|default(0)) }}% of total</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <h6 class="text-uppercase small">High Risk</h6>
+                    <h2 class="mb-0">{{ summary.high|default(0) }}</h2>
+                    <small>{{ "%.1f"|format(summary.high_pct|default(0)) }}% of total</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h6 class="text-uppercase small">Avg Confidence</h6>
+                    <h2 class="mb-0">{{ "%.1f"|format(summary.avg_confidence|default(0) * 100) }}%</h2>
+                    <small>Detection confidence</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row mb-4">
+        <div class="col-xl-8">
+            <div class="card h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Anomaly Trend Analysis</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="trendChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4">
+            <div class="card h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Anomaly Distribution</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="distributionChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Heatmap -->
+    <div class="card mb-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">Anomaly Heatmap (Time of Day vs Day of Week)</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered text-center">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th>Mon</th>
+                            <th>Tue</th>
+                            <th>Wed</th>
+                            <th>Thu</th>
+                            <th>Fri</th>
+                            <th>Sat</th>
+                            <th>Sun</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for hour in range(24) %}
+                        <tr>
+                            <th>{{ "%02d:00"|format(hour) }}</th>
+                            {% for day in range(7) %}
+                                {% set count = heatmap[day][hour] if heatmap and heatmap[day] else 0 %}
+                                <td>
+                                    <div class="heatmap-cell heatmap-{{ 
+                                        'critical' if count > 10 else 
+                                        'high' if count > 5 else 
+                                        'medium' if count > 2 else 
+                                        'low' 
+                                    }}" title="{{ count }} anomalies"></div>
+                                </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Anomaly Patterns -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Detected Anomaly Patterns</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for pattern in patterns %}
+                        <div class="col-md-6 mb-3">
+                            <div class="card anomaly-card {{ pattern.severity|lower }}">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between">
+                                        <h6>{{ pattern.type }}</h6>
+                                        <span class="badge bg-{{ 
+                                            'danger' if pattern.severity == 'CRITICAL' else 
+                                            'warning' if pattern.severity == 'HIGH' else 
+                                            'info' 
+                                        }}">{{ pattern.severity }}</span>
+                                    </div>
+                                    <p class="text-muted small">{{ pattern.description }}</p>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <small>
+                                            <i class="fas fa-chart-line me-1"></i>
+                                            Frequency: {{ pattern.frequency }} times
+                                        </small>
+                                        <small>
+                                            <i class="fas fa-clock me-1"></i>
+                                            Last: {{ pattern.last_detected[:10] }}
+                                        </small>
+                                    </div>
+                                    <div class="progress mt-2" style="height: 5px;">
+                                        <div class="progress-bar bg-danger" style="width: {{ pattern.confidence * 100 }}%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Anomaly List -->
+    <div class="card">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Detailed Anomaly List</h5>
+            <div class="input-group" style="width: 300px;">
+                <input type="text" class="form-control" id="searchAnomalies" placeholder="Search anomalies...">
+                <button class="btn btn-outline-secondary" type="button">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="anomaliesTable">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>User</th>
+                            <th>Event</th>
+                            <th>Anomaly Type</th>
+                            <th>Severity</th>
+                            <th>Confidence</th>
+                            <th>Features</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for anomaly in anomalies %}
+                        <tr class="anomaly-{{ anomaly.severity|lower }}">
+                            <td>{{ anomaly.timestamp[:16] }}</td>
+                            <td>
+                                <strong>{{ anomaly.user_name }}</strong><br>
+                                <small class="text-muted">{{ anomaly.moodle_id }}</small>
+                            </td>
+                            <td>{{ anomaly.event_name }}</td>
+                            <td>
+                                <span class="badge bg-info">{{ anomaly.anomaly_type }}</span>
+                            </td>
+                            <td>
+                                <span class="badge bg-{{ 
+                                    'danger' if anomaly.severity == 'CRITICAL' else 
+                                    'warning' if anomaly.severity == 'HIGH' else 
+                                    'info' if anomaly.severity == 'MEDIUM' else 
+                                    'secondary' 
+                                }}">
+                                    {{ anomaly.severity }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="progress" style="height: 20px; width: 100px;">
+                                    <div class="progress-bar bg-{{ 
+                                        'danger' if anomaly.confidence > 0.8 else 
+                                        'warning' if anomaly.confidence > 0.6 else 
+                                        'info' 
+                                    }}" style="width: {{ anomaly.confidence * 100 }}%">
+                                        {{ "%.0f"|format(anomaly.confidence * 100) }}%
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-info" 
+                                        onclick="showFeatures({{ anomaly.id }})">
+                                    <i class="fas fa-chart-bar"></i>
+                                </button>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-success" 
+                                        onclick="markReviewed({{ anomaly.id }})">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger" 
+                                        onclick="markFalsePositive({{ anomaly.id }})">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if pagination %}
+            <nav class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {{ pagination.links }}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Features Modal -->
+<div class="modal fade" id="featuresModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Anomaly Features Analysis</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="featuresBody">
+                Loading...
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let trendChart, distributionChart;
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize charts
+    initCharts();
+    
+    // Handle report type change
+    document.getElementById('reportType').addEventListener('change', function() {
+        const type = this.value;
+        const today = new Date();
+        
+        if (type === 'daily') {
+            document.getElementById('startDate').value = today.toISOString().split('T')[0];
+            document.getElementById('endDate').value = today.toISOString().split('T')[0];
+        } else if (type === 'weekly') {
+            const start = new Date(today);
+            start.setDate(today.getDate() - 7);
+            document.getElementById('startDate').value = start.toISOString().split('T')[0];
+            document.getElementById('endDate').value = today.toISOString().split('T')[0];
+        } else if (type === 'monthly') {
+            const start = new Date(today);
+            start.setMonth(today.getMonth() - 1);
+            document.getElementById('startDate').value = start.toISOString().split('T')[0];
+            document.getElementById('endDate').value = today.toISOString().split('T')[0];
+        }
+    });
+    
+    // Handle form submit
+    document.getElementById('reportForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        generateReport();
+    });
+    
+    // Search functionality
+    document.getElementById('searchAnomalies').addEventListener('keyup', function() {
+        const searchText = this.value.toLowerCase();
+        const rows = document.querySelectorAll('#anomaliesTable tbody tr');
+        
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(searchText) ? '' : 'none';
+        });
+    });
+});
+
+function initCharts() {
+    // Trend Chart
+    const ctx1 = document.getElementById('trendChart').getContext('2d');
+    trendChart = new Chart(ctx1, {
+        type: 'line',
+        data: {
+            labels: {{ trend_labels|tojson }},
+            datasets: [{
+                label: 'Critical',
+                data: {{ trend_critical|tojson }},
+                borderColor: '#dc3545',
+                backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                tension: 0.4
+            }, {
+                label: 'High',
+                data: {{ trend_high|tojson }},
+                borderColor: '#fd7e14',
+                backgroundColor: 'rgba(253, 126, 20, 0.1)',
+                tension: 0.4
+            }, {
+                label: 'Medium',
+                data: {{ trend_medium|tojson }},
+                borderColor: '#ffc107',
+                backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+    
+    // Distribution Chart
+    const ctx2 = document.getElementById('distributionChart').getContext('2d');
+    distributionChart = new Chart(ctx2, {
+        type: 'doughnut',
+        data: {
+            labels: ['Critical', 'High', 'Medium', 'Low'],
+            datasets: [{
+                data: [
+                    {{ distribution.critical|default(0) }},
+                    {{ distribution.high|default(0) }},
+                    {{ distribution.medium|default(0) }},
+                    {{ distribution.low|default(0) }}
+                ],
+                backgroundColor: ['#dc3545', '#fd7e14', '#ffc107', '#20c997'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+}
+
+function generateReport() {
+    const formData = new FormData(document.getElementById('reportForm'));
+    
+    fetch('/ml/anomaly-report/generate', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update charts with new data
+            updateCharts(data);
+        }
+    });
+}
+
+function updateCharts(data) {
+    // Update trend chart
+    trendChart.data.labels = data.trend_labels;
+    trendChart.data.datasets[0].data = data.trend_critical;
+    trendChart.data.datasets[1].data = data.trend_high;
+    trendChart.data.datasets[2].data = data.trend_medium;
+    trendChart.update();
+    
+    // Update distribution chart
+    distributionChart.data.datasets[0].data = [
+        data.distribution.critical,
+        data.distribution.high,
+        data.distribution.medium,
+        data.distribution.low
+    ];
+    distributionChart.update();
+}
+
+function showFeatures(anomalyId) {
+    const modal = new bootstrap.Modal(document.getElementById('featuresModal'));
+    document.getElementById('featuresBody').innerHTML = 'Loading...';
+    modal.show();
+    
+    fetch(`/ml/anomaly/${anomalyId}/features`)
+        .then(response => response.json())
+        .then(data => {
+            let html = '<div class="row">';
+            
+            // Feature importance chart
+            html += `
+                <div class="col-md-6">
+                    <h6>Feature Importance</h6>
+                    <canvas id="featureChart" height="200"></canvas>
+                </div>
+                <div class="col-md-6">
+                    <h6>Feature Values</h6>
+                    <table class="table table-sm">
+            `;
+            
+            for (const [key, value] of Object.entries(data.features)) {
+                html += `
+                    <tr>
+                        <th>${key}</th>
+                        <td>${value.toFixed(3)}</td>
+                    </tr>
+                `;
+            }
+            
+            html += `
+                    </table>
+                </div>
+            </div>
+            `;
+            
+            document.getElementById('featuresBody').innerHTML = html;
+            
+            // Initialize feature chart
+            setTimeout(() => {
+                const ctx = document.getElementById('featureChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: Object.keys(data.importance),
+                        datasets: [{
+                            label: 'Importance',
+                            data: Object.values(data.importance),
+                            backgroundColor: '#4361ee'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 1
+                            }
+                        }
+                    }
+                });
+            }, 100);
+        });
+}
+
+function markReviewed(anomalyId) {
+    if (confirm('Mark this anomaly as reviewed?')) {
+        fetch(`/ml/anomaly/${anomalyId}/review`, { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                }
+            });
+    }
+}
+
+function markFalsePositive(anomalyId) {
+    if (confirm('Mark this as false positive? This will help improve the model.')) {
+        fetch(`/ml/anomaly/${anomalyId}/false-positive`, { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                }
+            });
+    }
+}
+
+function exportReport() {
+    const params = new URLSearchParams({
+        start_date: document.getElementById('startDate').value,
+        end_date: document.getElementById('endDate').value,
+        min_score: document.getElementById('minScore').value
+    });
+    window.location.href = '/ml/anomaly-report/export?' + params.toString();
+}
+
+function refreshData() {
+    location.reload();
+}
+</script>
+
+<style>
+.bg-gradient-danger {
+    background: linear-gradient(135deg, #f72585, #b5179e);
+}
+.anomaly-critical {
+    background-color: rgba(220, 53, 69, 0.05);
+}
+.anomaly-high {
+    background-color: rgba(253, 126, 20, 0.05);
+}
+.anomaly-medium {
+    background-color: rgba(255, 193, 7, 0.05);
+}
+</style>
+{% endblock %}

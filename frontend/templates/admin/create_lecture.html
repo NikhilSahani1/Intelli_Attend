@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Lecture - IntelliAttend</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Poppins', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 50px auto;
+        }
+
+        /* Card Styles */
+        .card {
+            border-radius: 20px;
+            border: none;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            border-bottom: none;
+        }
+
+        .card-header h3 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+
+        .card-header p {
+            margin: 10px 0 0;
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .card-body {
+            padding: 40px;
+            background: white;
+        }
+
+        /* Form Styles */
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+            display: block;
+            font-size: 14px;
+        }
+
+        .form-label i {
+            margin-right: 8px;
+            color: #667eea;
+        }
+
+        .form-control, .form-select {
+            border-radius: 12px;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+
+        .form-control::placeholder {
+            color: #aaa;
+            font-size: 13px;
+        }
+
+        /* Button Styles */
+        .btn-create {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            padding: 12px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 16px;
+            width: 100%;
+            color: white;
+            transition: all 0.3s;
+        }
+
+        .btn-create:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+
+        /* Alert Styles */
+        .alert {
+            border-radius: 12px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        /* Info Box */
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            font-size: 13px;
+        }
+
+        .info-box i {
+            color: #2196f3;
+            margin-right: 10px;
+        }
+
+        /* Required Field */
+        .required-field::after {
+            content: " *";
+            color: #dc3545;
+        }
+
+        /* Help Text */
+        .form-text {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+
+        /* Tips Section */
+        .tips-card {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .tips-card h6 {
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .tips-card ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .tips-card li {
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: #555;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                margin: 20px auto;
+            }
+            .card-body {
+                padding: 25px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-chalkboard-teacher"></i> Create New Lecture</h3>
+                <p>Add a lecture with professor information</p>
+            </div>
+            <div class="card-body">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show" role="alert">
+                                <i class="fas fa-{% if category == 'success' %}check-circle{% else %}exclamation-circle{% endif %}"></i>
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <div class="info-box">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Note:</strong> Each lecture is associated with an event and a professor. Students will see the professor's name when viewing attendance.
+                </div>
+
+                <form method="POST" action="{{ url_for('create_lecture') }}">
+                    <div class="form-group">
+                        <label class="form-label required-field">
+                            <i class="fas fa-book"></i> Lecture Name
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               name="lecture_name" 
+                               required 
+                               placeholder="Enter lecture name (e.g., Introduction to Machine Learning)"
+                               autocomplete="off">
+                        <div class="form-text">Enter the full lecture title</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label required-field">
+                            <i class="fas fa-calendar-alt"></i> Select Event
+                        </label>
+                        <select class="form-select" name="event_id" required>
+                            <option value="">-- Select an Event --</option>
+                            {% for event in events %}
+                                <option value="{{ event.id }}">{{ event.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">Choose the event this lecture belongs to</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label required-field">
+                            <i class="fas fa-user-tie"></i> Professor Name
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               name="professor_name" 
+                               required 
+                               placeholder="Enter professor name (e.g., Dr. John Smith)"
+                               autocomplete="off">
+                        <div class="form-text">Full name of the professor conducting this lecture</div>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn-create">
+                            <i class="fas fa-plus-circle"></i> Create Lecture
+                        </button>
+                        <a href="{{ url_for('manage_lectures') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Back to Lectures
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Tips Section -->
+        <div class="tips-card">
+            <h6><i class="fas fa-lightbulb"></i> Tips:</h6>
+            <ul>
+                <li>Make sure the event exists before creating a lecture</li>
+                <li>Professor name will appear in attendance records</li>
+                <li>You can create multiple lectures for the same event</li>
+                <li>Lecture names should be unique within an event</li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Auto-capitalize first letter of each word in professor name
+        const professorInput = document.querySelector('input[name="professor_name"]');
+        if (professorInput) {
+            professorInput.addEventListener('input', function(e) {
+                let value = this.value;
+                if (value.length > 0) {
+                    value = value.toLowerCase().replace(/\b\w/g, function(l) {
+                        return l.toUpperCase();
+                    });
+                    this.value = value;
+                }
+            });
+        }
+        
+        // Form validation
+        document.querySelector('form').addEventListener('submit', function(e) {
+            const lectureName = document.querySelector('input[name="lecture_name"]').value.trim();
+            const eventId = document.querySelector('select[name="event_id"]').value;
+            const professorName = document.querySelector('input[name="professor_name"]').value.trim();
+            
+            if (!lectureName) {
+                e.preventDefault();
+                alert('Please enter lecture name');
+                return false;
+            }
+            
+            if (!eventId) {
+                e.preventDefault();
+                alert('Please select an event');
+                return false;
+            }
+            
+            if (!professorName) {
+                e.preventDefault();
+                alert('Please enter professor name');
+                return false;
+            }
+            
+            return true;
+        });
+    </script>
+</body>
+</html>

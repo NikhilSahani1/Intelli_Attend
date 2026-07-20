@@ -1,0 +1,586 @@
+{% extends "base.html" %}
+
+{% block title %}Face Enrollment - Multi-Angle Capture{% endblock %}
+
+{% block extra_css %}
+<style>
+    .camera-container {
+        position: relative;
+        width: 100%;
+        max-width: 640px;
+        margin: 0 auto;
+        background: #000;
+        border-radius: 15px;
+        overflow: hidden;
+    }
+    
+    #video {
+        width: 100%;
+        height: auto;
+        display: block;
+    }
+    
+    .canvas-container {
+        position: relative;
+        display: inline-block;
+        margin: 10px;
+        cursor: pointer;
+    }
+    
+    .canvas-container canvas {
+        border: 3px solid #ddd;
+        border-radius: 10px;
+        transition: all 0.3s;
+        width: 120px;
+        height: 120px;
+        object-fit: cover;
+    }
+    
+    .canvas-container:hover canvas {
+        border-color: #007bff;
+        transform: scale(1.05);
+    }
+    
+    .canvas-container.selected canvas {
+        border-color: #28a745;
+        border-width: 4px;
+        box-shadow: 0 0 10px rgba(40,167,69,0.5);
+    }
+    
+    .delete-btn {
+        position: absolute;
+        top: -10px;
+        right: -10px;
+        background: red;
+        color: white;
+        border-radius: 50%;
+        width: 25px;
+        height: 25px;
+        text-align: center;
+        line-height: 25px;
+        font-size: 14px;
+        cursor: pointer;
+        display: none;
+    }
+    
+    .canvas-container:hover .delete-btn {
+        display: block;
+    }
+    
+    .angle-badge {
+        position: absolute;
+        bottom: 5px;
+        left: 5px;
+        background: rgba(0,0,0,0.7);
+        color: white;
+        padding: 2px 6px;
+        border-radius: 5px;
+        font-size: 10px;
+    }
+    
+    .progress-indicator {
+        width: 100%;
+        height: 4px;
+        background: #e0e0e0;
+        border-radius: 2px;
+        overflow: hidden;
+    }
+    
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #28a745, #007bff);
+        width: 0%;
+        transition: width 0.3s;
+    }
+    
+    .instruction-box {
+        background: #f8f9fa;
+        border-left: 4px solid #007bff;
+        padding: 15px;
+        margin: 15px 0;
+        border-radius: 8px;
+    }
+    
+    .instruction-item {
+        display: inline-block;
+        margin: 5px 10px;
+        text-align: center;
+    }
+    
+    .instruction-item i {
+        font-size: 24px;
+        display: block;
+        margin-bottom: 5px;
+    }
+    
+    .capture-btn {
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 60px;
+        height: 60px;
+        font-size: 24px;
+        cursor: pointer;
+        transition: all 0.3s;
+        z-index: 10;
+    }
+    
+    .capture-btn:hover {
+        background: #0056b3;
+        transform: translateX(-50%) scale(1.1);
+    }
+    
+    .photo-gallery {
+        max-height: 300px;
+        overflow-y: auto;
+        padding: 10px;
+        background: #f5f5f5;
+        border-radius: 10px;
+    }
+    
+    .btn-train {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 12px 30px;
+        font-size: 18px;
+        border-radius: 50px;
+        transition: all 0.3s;
+    }
+    
+    .btn-train:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+    }
+    
+    .status-badge {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 1000;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-lg-7">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-camera me-2"></i>Face Enrollment - Multi-Angle Capture
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- Instructions -->
+                    <div class="instruction-box">
+                        <h6><i class="fas fa-info-circle me-2"></i>Capture Instructions:</h6>
+                        <div class="text-center">
+                            <div class="instruction-item">
+                                <i class="fas fa-user-circle"></i>
+                                <small>Look Straight</small>
+                            </div>
+                            <div class="instruction-item">
+                                <i class="fas fa-arrow-left"></i>
+                                <small>Turn Left</small>
+                            </div>
+                            <div class="instruction-item">
+                                <i class="fas fa-arrow-right"></i>
+                                <small>Turn Right</small>
+                            </div>
+                            <div class="instruction-item">
+                                <i class="fas fa-smile"></i>
+                                <small>Smile</small>
+                            </div>
+                            <div class="instruction-item">
+                                <i class="fas fa-eye"></i>
+                                <small>Eyes Open</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Progress -->
+                    <div class="mb-3">
+                        <label class="fw-bold">Enrollment Progress</label>
+                        <div class="progress-indicator">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                        <small class="text-muted" id="progressText">0/8 angles captured</small>
+                    </div>
+                    
+                    <!-- Camera Container -->
+                    <div class="camera-container">
+                        <video id="video" autoplay playsinline></video>
+                        <button class="capture-btn" id="captureBtn">
+                            <i class="fas fa-camera"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- Flash Message -->
+                    <div id="flashMessage" class="alert mt-3" style="display: none;"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-5">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-images me-2"></i>Captured Photos
+                        <span class="badge bg-light text-dark ms-2" id="photoCount">0</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="photo-gallery" id="photoGallery">
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-camera fa-3x mb-2"></i>
+                            <p>No photos captured yet<br>Click the camera button to start</p>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-3 text-center">
+                        <button class="btn btn-danger btn-sm" id="clearAllBtn" onclick="clearAllPhotos()">
+                            <i class="fas fa-trash-alt me-2"></i>Clear All
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- User Info Card -->
+            <div class="card shadow mt-3">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user me-2"></i>User Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-1"><strong>Name:</strong> {{ user.name }}</p>
+                    <p class="mb-1"><strong>Email:</strong> {{ user.email }}</p>
+                    <p class="mb-1"><strong>Student ID:</strong> {{ user.student_id or 'Not set' }}</p>
+                    <p class="mb-0"><strong>Face Status:</strong> 
+                        {% if user.face_enrolled %}
+                            <span class="badge bg-success">Enrolled</span>
+                        {% else %}
+                            <span class="badge bg-warning">Not Enrolled</span>
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Train Button -->
+    <div class="row mt-4">
+        <div class="col-12 text-center">
+            <button class="btn btn-train btn-lg" id="trainBtn" onclick="trainModel()">
+                <i class="fas fa-brain me-2"></i>Train Face Recognition Model
+            </button>
+            <button class="btn btn-success btn-lg ms-3" id="completeBtn" onclick="completeEnrollment()" style="display: none;">
+                <i class="fas fa-check-circle me-2"></i>Complete Enrollment
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Status Toast -->
+<div class="status-badge">
+    <div class="toast" id="statusToast" role="alert" data-bs-autohide="true" data-bs-delay="3000">
+        <div class="toast-header">
+            <i class="fas fa-info-circle me-2"></i>
+            <strong class="me-auto">Status</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body" id="toastMessage">
+            Ready to capture faces
+        </div>
+    </div>
+</div>
+
+<script>
+let stream = null;
+let capturedPhotos = [];
+let currentAngleIndex = 0;
+const angles = ['Front', 'Left', 'Right', 'Up', 'Down', 'Smile', 'Neutral', 'Eyes Open'];
+
+// Initialize camera
+async function initCamera() {
+    try {
+        stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { 
+                width: { ideal: 640 },
+                height: { ideal: 480 },
+                facingMode: 'user'
+            } 
+        });
+        const video = document.getElementById('video');
+        video.srcObject = stream;
+        await video.play();
+        updateProgress();
+    } catch (err) {
+        console.error('Camera error:', err);
+        showFlash('Unable to access camera. Please check permissions.', 'danger');
+    }
+}
+
+// Capture photo
+document.getElementById('captureBtn').addEventListener('click', function() {
+    const video = document.getElementById('video');
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    // Convert to blob
+    canvas.toBlob(function(blob) {
+        const reader = new FileReader();
+        reader.onloadend = function() {
+            const photoData = {
+                id: Date.now(),
+                data: reader.result,
+                angle: angles[currentAngleIndex % angles.length],
+                timestamp: new Date().toLocaleTimeString()
+            };
+            capturedPhotos.push(photoData);
+            updatePhotoGallery();
+            updateProgress();
+            
+            // Move to next angle
+            currentAngleIndex++;
+            showToast(`Captured: ${photoData.angle} angle`, 'success');
+            
+            if (capturedPhotos.length >= 8) {
+                document.getElementById('completeBtn').style.display = 'inline-block';
+                showToast('All angles captured! Click Complete Enrollment.', 'info');
+            }
+        };
+        reader.readAsDataURL(blob);
+    }, 'image/jpeg', 0.9);
+});
+
+// Update photo gallery
+function updatePhotoGallery() {
+    const gallery = document.getElementById('photoGallery');
+    const count = capturedPhotos.length;
+    document.getElementById('photoCount').innerText = count;
+    
+    if (count === 0) {
+        gallery.innerHTML = `
+            <div class="text-center text-muted py-4">
+                <i class="fas fa-camera fa-3x mb-2"></i>
+                <p>No photos captured yet<br>Click the camera button to start</p>
+            </div>
+        `;
+        return;
+    }
+    
+    gallery.innerHTML = '';
+    capturedPhotos.forEach((photo, index) => {
+        const div = document.createElement('div');
+        div.className = 'canvas-container';
+        div.setAttribute('data-id', photo.id);
+        
+        const img = document.createElement('img');
+        img.src = photo.data;
+        img.style.width = '120px';
+        img.style.height = '120px';
+        img.style.objectFit = 'cover';
+        img.style.borderRadius = '10px';
+        
+        const deleteBtn = document.createElement('div');
+        deleteBtn.className = 'delete-btn';
+        deleteBtn.innerHTML = '×';
+        deleteBtn.onclick = (e) => {
+            e.stopPropagation();
+            deletePhoto(photo.id);
+        };
+        
+        const angleBadge = document.createElement('div');
+        angleBadge.className = 'angle-badge';
+        angleBadge.innerText = photo.angle;
+        
+        div.appendChild(img);
+        div.appendChild(deleteBtn);
+        div.appendChild(angleBadge);
+        gallery.appendChild(div);
+    });
+}
+
+// Delete single photo
+function deletePhoto(photoId) {
+    capturedPhotos = capturedPhotos.filter(p => p.id !== photoId);
+    updatePhotoGallery();
+    updateProgress();
+    document.getElementById('completeBtn').style.display = 'none';
+    showToast('Photo deleted', 'warning');
+}
+
+// Clear all photos
+function clearAllPhotos() {
+    if (confirm('Are you sure you want to clear all captured photos?')) {
+        capturedPhotos = [];
+        currentAngleIndex = 0;
+        updatePhotoGallery();
+        updateProgress();
+        document.getElementById('completeBtn').style.display = 'none';
+        showToast('All photos cleared', 'info');
+    }
+}
+
+// Update progress
+function updateProgress() {
+    const count = capturedPhotos.length;
+    const percentage = (count / 8) * 100;
+    document.getElementById('progressFill').style.width = percentage + '%';
+    document.getElementById('progressText').innerText = `${count}/8 angles captured`;
+    
+    if (count >= 8) {
+        document.getElementById('progressFill').style.background = 'linear-gradient(90deg, #28a745, #007bff)';
+    }
+}
+
+// Train model
+function trainModel() {
+    if (capturedPhotos.length < 5) {
+        showFlash('Please capture at least 5 photos from different angles first!', 'warning');
+        return;
+    }
+    
+    showFlash('Training face recognition model... Please wait.', 'info');
+    document.getElementById('trainBtn').disabled = true;
+    document.getElementById('trainBtn').innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Training...';
+    
+    // Send all photos to server
+    const promises = capturedPhotos.map(photo => {
+        return fetch('/api/face/enroll-multiple', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                face_image: photo.data,
+                angle: photo.angle 
+            })
+        });
+    });
+    
+    Promise.all(promises)
+        .then(() => {
+            return fetch('/api/face/train', { method: 'POST' });
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showFlash('Model trained successfully!', 'success');
+                document.getElementById('completeBtn').style.display = 'inline-block';
+            } else {
+                showFlash('Training failed: ' + data.message, 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showFlash('Error during training', 'danger');
+        })
+        .finally(() => {
+            document.getElementById('trainBtn').disabled = false;
+            document.getElementById('trainBtn').innerHTML = '<i class="fas fa-brain me-2"></i>Train Face Recognition Model';
+        });
+}
+
+// Complete enrollment
+function completeEnrollment() {
+    fetch('/api/face/complete-enrollment', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showFlash('Enrollment completed! Redirecting...', 'success');
+                setTimeout(() => {
+                    window.location.href = '/dashboard';
+                }, 2000);
+            } else {
+                showFlash('Error: ' + data.message, 'danger');
+            }
+        });
+}
+
+// View enrolled photos
+function viewEnrolledPhotos() {
+    fetch('/api/face/get-enrolled-photos')
+        .then(response => response.json())
+        .then(data => {
+            if (data.photos && data.photos.length > 0) {
+                const modal = new bootstrap.Modal(document.getElementById('photosModal'));
+                const gallery = document.getElementById('enrolledPhotosGallery');
+                gallery.innerHTML = '';
+                data.photos.forEach(photo => {
+                    const img = document.createElement('img');
+                    img.src = photo.url;
+                    img.style.width = '150px';
+                    img.style.margin = '10px';
+                    img.style.borderRadius = '10px';
+                    gallery.appendChild(img);
+                });
+                modal.show();
+            } else {
+                showToast('No enrolled photos found', 'info');
+            }
+        });
+}
+
+// Helper functions
+function showFlash(message, type) {
+    const flash = document.getElementById('flashMessage');
+    flash.className = `alert alert-${type} mt-3`;
+    flash.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : (type === 'danger' ? 'exclamation-circle' : 'info-circle')} me-2"></i>${message}`;
+    flash.style.display = 'block';
+    setTimeout(() => {
+        flash.style.display = 'none';
+    }, 5000);
+}
+
+function showToast(message, type) {
+    const toast = document.getElementById('statusToast');
+    const toastBody = document.getElementById('toastMessage');
+    const headerIcon = toast.querySelector('.toast-header i');
+    
+    toastBody.innerText = message;
+    if (type === 'success') {
+        headerIcon.className = 'fas fa-check-circle me-2 text-success';
+    } else if (type === 'danger') {
+        headerIcon.className = 'fas fa-exclamation-circle me-2 text-danger';
+    } else {
+        headerIcon.className = 'fas fa-info-circle me-2 text-info';
+    }
+    
+    const bsToast = new bootstrap.Toast(toast);
+    bsToast.show();
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', () => {
+    initCamera();
+});
+</script>
+
+<!-- Modal for viewing enrolled photos -->
+<div class="modal fade" id="photosModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">My Enrolled Photos</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row" id="enrolledPhotosGallery"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Intelligent Attendance System{% endblock %}</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('home') }}">
+                <i class="fas fa-robot me-2"></i>
+                <strong>IntelliAttend</strong>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    {% if session.user_id %}
+                        <!-- User Navigation -->
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('dashboard') }}">
+                                <i class="fas fa-tachometer-alt me-1"></i> Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('events') }}">
+                                <i class="fas fa-calendar-alt me-1"></i> Events
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('my_attendance') }}">
+                                <i class="fas fa-clock me-1"></i> My Attendance
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('enhanced_face_enrollment') }}">
+                                <i class="fas fa-camera me-1"></i> Face Enrollment
+                            </a>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-user-circle me-1"></i> {{ session.user_name }}
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="{{ url_for('profile') }}"><i class="fas fa-id-card me-2"></i>Profile</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
+                            </ul>
+                        </li>
+                    {% elif session.admin_id %}
+                        <!-- Admin Navigation -->
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('admin_dashboard') }}">
+                                <i class="fas fa-tachometer-alt me-1"></i> Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('events') }}">
+                                <i class="fas fa-calendar-alt me-1"></i> Events
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('manage_lectures') }}">
+                                <i class="fas fa-chalkboard-teacher me-1"></i> Lectures
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('manage_users') }}">
+                                <i class="fas fa-users me-1"></i> Users
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('admin_face_management') }}">
+                                <i class="fas fa-camera me-1"></i> Face Management
+                            </a>
+
+                        </li>
+                        
+                        <!-- BULK OPERATIONS DROPDOWN - ADDED HERE -->
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="bulkOperationsDropdown" role="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-layer-group me-1"></i> <br>Bulk Ops
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="{{ url_for('bulk_import') }}">
+                                    <i class="fas fa-upload me-2"></i> Bulk Import Students
+                                </a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('bulk_verify') }}">
+                                    <i class="fas fa-check-double me-2"></i> Bulk Verify Students
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{{ url_for('manage_users') }}">
+                                    <i class="fas fa-list me-2"></i> Manage Users
+                                </a></li>
+                            </ul>
+                        </li>
+                        
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('verifications') }}">
+                                <i class="fas fa-check-circle me-1"></i> Verifications
+                                <span class="badge bg-warning" id="pendingVerificationBadge">0</span>
+                            </a>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="mlDropdown" role="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-brain me-1"></i><br> ML Analytics
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="{{ url_for('ml_dashboard') }}"><i class="fas fa-chart-line me-2"></i>ML Dashboard</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('fraud_alerts') }}"><i class="fas fa-exclamation-triangle me-2"></i>Fraud Alerts</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('anomaly_report') }}"><i class="fas fa-chart-bar me-2"></i>Anomaly Reports</a></li>
+                            </ul>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-user-shield me-1"></i> <br>{{ session.admin_name }}
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="{{ url_for('security_logs') }}"><i class="fas fa-history me-2"></i>Security Logs</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('admin_settings') }}"><i class="fas fa-cog me-2"></i>Settings</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
+                            </ul>
+                        </li>
+
+{% else %}
+    <!-- Public Navigation -->
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('home') }}">
+            <i class="fas fa-home me-1"></i> Home
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('login') }}">
+            <i class="fas fa-user me-1"></i> User Login
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('admin_login') }}">
+            <i class="fas fa-lock me-1"></i> Admin
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link btn btn-outline-light" href="{{ url_for('register') }}">
+            <i class="fas fa-user-plus me-1"></i> Register
+        </a>
+    </li>
+{% endif %}
+
+
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Flash Messages -->
+    <div class="container mt-3">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show" role="alert">
+                        {% if category == 'success' %}
+                            <i class="fas fa-check-circle me-2"></i>
+                        {% elif category == 'error' %}
+                            <i class="fas fa-exclamation-circle me-2"></i>
+                        {% elif category == 'warning' %}
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                        {% else %}
+                            <i class="fas fa-info-circle me-2"></i>
+                        {% endif %}
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <!-- Main Content -->
+    <main class="py-4">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-light py-4 mt-5">
+        <div class="container text-center">
+            <p class="mb-0">
+                <i class="fas fa-robot me-2"></i>
+                Intelligent Attendance Monitoring System with Fraud Detection using Machine Learning
+            </p>
+            <small class="text-muted">
+                <i class="fas fa-shield-alt me-1"></i> Secure & Reliable | 
+                <i class="fas fa-chart-line me-1"></i> Real-time Analytics |
+                <i class="fas fa-face-smile me-1"></i> AI-Powered
+            </small>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- DataTables JS -->
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    <!-- SheetJS for Excel handling -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <!-- Custom JS -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    
+    <script>
+        // Update pending verification badge
+        function updatePendingCount() {
+            $.get('/admin/pending-verifications/count', function(data) {
+                if (data && data.count !== undefined) {
+                    $('#pendingVerificationBadge').text(data.count);
+                    if (data.count > 0) {
+                        $('#pendingVerificationBadge').show();
+                    } else {
+                        $('#pendingVerificationBadge').hide();
+                    }
+                }
+            }).fail(function() {
+                console.log('Failed to fetch pending count');
+            });
+        }
+        
+        // Function to show toast notifications
+        function showToast(message, type = 'success') {
+            const toastHtml = `
+                <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+                    <div class="toast align-items-center text-white bg-${type} border-0" role="alert" data-bs-autohide="true" data-bs-delay="5000">
+                        <div class="d-flex">
+                            <div class="toast-body">
+                                <i class="fas ${type === 'success' ? 'fa-check-circle' : (type === 'danger' ? 'fa-exclamation-circle' : 'fa-info-circle')} me-2"></i>
+                                ${message}
+                            </div>
+                            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            $('body').append(toastHtml);
+            const toast = new bootstrap.Toast($('.toast').last());
+            toast.show();
+            
+            // Remove toast after it's hidden
+            $('.toast').last().on('hidden.bs.toast', function() {
+                $(this).parent().remove();
+            });
+        }
+        
+        // Function to format date
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-IN', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
+            });
+        }
+        
+        // Function to format datetime
+        function formatDateTime(dateString) {
+            if (!dateString) return 'N/A';
+            const date = new Date(dateString);
+            return date.toLocaleString('en-IN', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+        
+        // Function to get status badge
+        function getStatusBadge(status, type = 'default') {
+            const badges = {
+                'verified': '<span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Verified</span>',
+                'pending': '<span class="badge bg-warning"><i class="fas fa-clock me-1"></i>Pending</span>',
+                'rejected': '<span class="badge bg-danger"><i class="fas fa-times-circle me-1"></i>Rejected</span>',
+                'active': '<span class="badge bg-success"><i class="fas fa-circle me-1"></i>Active</span>',
+                'inactive': '<span class="badge bg-secondary"><i class="fas fa-circle me-1"></i>Inactive</span>',
+                'high': '<span class="badge bg-danger"><i class="fas fa-exclamation-triangle me-1"></i>High Risk</span>',
+                'medium': '<span class="badge bg-warning"><i class="fas fa-exclamation-triangle me-1"></i>Medium Risk</span>',
+                'low': '<span class="badge bg-success"><i class="fas fa-shield-alt me-1"></i>Low Risk</span>'
+            };
+            return badges[status] || `<span class="badge bg-secondary">${status}</span>`;
+        }
+        
+        // Global AJAX error handler
+        $(document).ajaxError(function(event, xhr, settings, error) {
+            console.error('AJAX Error:', error, xhr.responseText);
+            if (xhr.status === 401) {
+                showToast('Session expired. Please login again.', 'danger');
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 2000);
+            } else if (xhr.status === 403) {
+                showToast('Access denied. Insufficient permissions.', 'danger');
+            } else if (xhr.status === 500) {
+                showToast('Server error. Please try again later.', 'danger');
+            }
+        });
+        
+        {% if session.admin_id %}
+        // Update every 30 seconds for admin
+        setInterval(updatePendingCount, 30000);
+        updatePendingCount();
+        {% endif %}
+        
+        // Initialize tooltips
+        $(document).ready(function() {
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(function(tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        });
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

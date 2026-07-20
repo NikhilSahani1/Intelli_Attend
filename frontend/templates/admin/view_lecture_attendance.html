@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block title %}Lecture Attendance - {{ lecture.lecture_name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Lecture Info Card -->
+    <div class="card shadow mb-4">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">
+                <i class="fas fa-chalkboard-teacher"></i> {{ lecture.lecture_name }}
+            </h4>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <strong>Event:</strong><br>
+                    {{ lecture.event_name }} ({{ lecture.event_date }})
+                </div>
+                <div class="col-md-3">
+                    <strong>Professor:</strong><br>
+                    {{ lecture.professor_name or 'Not Assigned' }}
+                </div>
+                <div class="col-md-3">
+                    <strong>Conducted By:</strong><br>
+                    {{ lecture.conducted_by }}
+                </div>
+                <div class="col-md-3">
+                    <strong>Created On:</strong><br>
+                    {{ lecture.created_at[:10] if lecture.created_at else 'N/A' }}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Total Attendance</h5>
+                    <h2 class="mb-0">{{ stats.total_attendance }}</h2>
+                    <small>Students present</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Verified</h5>
+                    <h2 class="mb-0">{{ stats.verified_count }}</h2>
+                    <small>Face verified</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <h5 class="card-title">High Risk</h5>
+                    <h2 class="mb-0">{{ stats.high_risk_count }}</h2>
+                    <small>Fraud alerts</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-dark">
+                <div class="card-body">
+                    <h5 class="card-title">Avg Fraud Score</h5>
+                    <h2 class="mb-0">{{ stats.avg_fraud_score }}%</h2>
+                    <small>Average risk</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Attendance Table -->
+    <div class="card shadow">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-users"></i> Attendance Records</h5>
+        </div>
+        <div class="card-body">
+            {% if attendance %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Student Name</th>
+                            <th>Student ID</th>
+                            <th>Moodle ID</th>
+                            <th>Timestamp</th>
+                            <th>Verified</th>
+                            <th>Fraud Score</th>
+                            <th>Risk</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in attendance %}
+                        <tr>
+                            <td>
+                                <strong>{{ record.user_name }}</strong><br>
+                                <small class="text-muted">{{ record.user_email }}</small>
+                            </td>
+                            <td>{{ record.student_id }}</td>
+                            <td>{{ record.moodle_id }}</td>
+                            <td>{{ record.timestamp }}</td>
+                            <td>{{ record.verified }}</td>
+                            <td>{{ record.fraud_score }}%</td>
+                            <td>
+                                <span class="badge bg-{{ record.badge_class }}">
+                                    {{ record.risk_level }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> No attendance records found for this lecture.
+            </div>
+            {% endif %}
+        </div>
+        <div class="card-footer">
+            <a href="{{ url_for('manage_lectures') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Lectures
+            </a>
+            <button onclick="window.print()" class="btn btn-primary">
+                <i class="fas fa-print"></i> Print Report
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}

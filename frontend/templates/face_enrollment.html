@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Enrollment - AMS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 30px;
+        }
+        .enrollment-card {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .card-header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .video-container {
+            position: relative;
+            width: 100%;
+            max-width: 640px;
+            margin: 20px auto;
+            background: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        #video {
+            width: 100%;
+            transform: scaleX(-1);
+        }
+        #canvas {
+            display: none;
+        }
+        .angle-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+        .btn-angle {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 50px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .btn-angle.active {
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+        }
+        .btn-capture {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 50px;
+            font-weight: bold;
+            margin: 10px;
+        }
+        .btn-enroll {
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 50px;
+            font-weight: bold;
+        }
+        .btn-train {
+            background: linear-gradient(135deg, #ff9800, #f57c00);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 50px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .face-preview {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin: 20px 0;
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        .face-preview img {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 10px;
+            border: 2px solid #667eea;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .face-preview img:hover {
+            transform: scale(1.05);
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.info { background: #d1ecf1; color: #0c5460; }
+        .status.warning { background: #fff3cd; color: #856404; }
+        
+        .stats-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+            text-align: center;
+        }
+        .stats-card h4 {
+            margin: 0;
+            color: #667eea;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .progress-bar-custom {
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+            width: 0%;
+            transition: width 0.3s;
+        }
+        .user-info {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="enrollment-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-camera"></i> Face Enrollment - Multi-Angle Capture</h3>
+                        <p class="mb-0">Welcome, {{ user.name }}!</p>
+                    </div>
+                    <div class="card-body p-4">
+                        <!-- User Information -->
+                        <div class="user-info">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <small class="text-muted">Name</small>
+                                    <p class="mb-0"><strong>{{ user.name }}</strong></p>
+                                </div>
+                                <div class="col-md-6">
+                                    <small class="text-muted">Email</small>
+                                    <p class="mb-0"><strong>{{ user.email }}</strong></p>
+                                </div>
+                                <div class="col-md-6">
+                                    <small class="text-muted">Student ID</small>
+                                    <p class="mb-0"><strong>{{ user.id }}</strong></p>
+                                </div>
+                                <div class="col-md-6">
+                                    <small class="text-muted">Face Status</small>
+                                    <p class="mb-0">
+                                        <strong class="text-success">
+                                            <i class="fas fa-check-circle"></i> Ready for Enrollment
+                                        </strong>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <strong><i class="fas fa-info-circle"></i> Instructions:</strong>
+                            <ol class="mb-0">
+                                <li>Select different angles (Front, Left, Right, Up)</li>
+                                <li>Click "Capture Face" for each angle</li>
+                                <li>Capture at least 4 different angles for best results</li>
+                                <li>Click "Enroll All Faces" to save to database</li>
+                                <li>Finally, click "Train Face Recognition Model"</li>
+                            </ol>
+                        </div>
+                        
+                        <!-- Angle Selection -->
+                        <div class="angle-buttons">
+                            <button class="btn-angle" onclick="setAngle('front')" id="angle-front">
+                                <i class="fas fa-user"></i> Front
+                            </button>
+                            <button class="btn-angle" onclick="setAngle('left')" id="angle-left">
+                                <i class="fas fa-arrow-left"></i> Left
+                            </button>
+                            <button class="btn-angle" onclick="setAngle('right')" id="angle-right">
+                                <i class="fas fa-arrow-right"></i> Right
+                            </button>
+                            <button class="btn-angle" onclick="setAngle('up')" id="angle-up">
+                                <i class="fas fa-arrow-up"></i> Up
+                            </button>
+                        </div>
+                        
+                        <div class="video-container">
+                            <video id="video" autoplay playsinline></video>
+                            <canvas id="canvas"></canvas>
+                        </div>
+                        
+                        <div class="text-center">
+                            <button class="btn-capture" onclick="captureFace()">
+                                📸 Capture Face
+                            </button>
+                        </div>
+                        
+                        <!-- Captured Photos Section -->
+                        <div class="stats-card">
+                            <h5>Captured Photos</h5>
+                            <div id="facePreviews" class="face-preview"></div>
+                            <div class="progress-bar-custom">
+                                <div class="progress-fill" id="progressFill"></div>
+                            </div>
+                            <small class="text-muted" id="captureCount">0/8 angles captured</small>
+                            <div class="mt-2">
+                                <button class="btn btn-sm btn-outline-danger" onclick="resetCaptures()">
+                                    <i class="fas fa-trash"></i> Clear All
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div id="status" class="status"></div>
+                        
+                        <!-- Enrollment Progress -->
+                        <div class="text-center mt-3">
+                            <button class="btn-enroll" onclick="enrollFaces()" id="enrollBtn" disabled>
+                                ✅ Enroll All Faces
+                            </button>
+                            <button class="btn-train" onclick="trainModel()" id="trainBtn">
+                                🤖 Train Face Recognition Model
+                            </button>
+                        </div>
+                        
+                        <!-- Training Status -->
+                        <div id="trainingMessage" style="display: none;"></div>
+                        
+                        <!-- Training Stats -->
+                        <div class="row mt-3">
+                            <div class="col-6">
+                                <div class="stats-card">
+                                    <h4 id="facesTrained">0</h4>
+                                    <small>Faces Trained</small>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="stats-card">
+                                    <h4 id="usersTrained">0</h4>
+                                    <small>Users Trained</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <script>
+        let capturedImages = [];
+        let currentAngle = 'front';
+        let stream = null;
+        let angles = {
+            front: false,
+            left: false,
+            right: false,
+            up: false
+        };
+        
+        // Set current angle
+        function setAngle(angle) {
+            currentAngle = angle;
+            // Update button styles
+            document.querySelectorAll('.btn-angle').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.getElementById(`angle-${angle}`).classList.add('active');
+            showStatus(`Ready to capture ${angle} angle`, 'info');
+        }
+        
+        // Start camera
+        async function startCamera() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                const video = document.getElementById('video');
+                video.srcObject = stream;
+            } catch (err) {
+                showStatus('Error accessing camera: ' + err.message, 'error');
+            }
+        }
+        
+        // Capture face with angle
+function captureFace() {
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const context = canvas.getContext('2d');
+    
+    if (video.videoWidth === 0 || video.videoHeight === 0) {
+        showStatus('Camera not ready', 'error');
+        return;
+    }
+    
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    // Use toBlob for better quality
+    canvas.toBlob(function(blob) {
+        const reader = new FileReader();
+        reader.onloadend = function() {
+            capturedImages.push({
+                data: reader.result,
+                angle: currentAngle,
+                timestamp: Date.now()
+            });
+            angles[currentAngle] = true;
+            updatePreview();
+            updateProgress();
+            showStatus(`Captured ${currentAngle} angle face. Total: ${capturedImages.length} faces.`, 'success');
+            
+            if (capturedImages.length >= 4) {
+                document.getElementById('enrollBtn').disabled = false;
+            }
+        };
+        reader.readAsDataURL(blob);
+    }, 'image/jpeg', 0.9);
+}
+        
+        // Update preview
+        function updatePreview() {
+            const previewDiv = document.getElementById('facePreviews');
+            previewDiv.innerHTML = '';
+            capturedImages.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.style.position = 'relative';
+                div.style.display = 'inline-block';
+                div.style.margin = '5px';
+                
+                const img = document.createElement('img');
+                img.src = item.data;
+                img.title = `${item.angle} angle - Click to remove`;
+                img.onclick = () => removeImage(index);
+                
+                const label = document.createElement('div');
+                label.textContent = item.angle;
+                label.style.fontSize = '10px';
+                label.style.textAlign = 'center';
+                label.style.marginTop = '5px';
+                label.style.color = '#667eea';
+                label.style.fontWeight = 'bold';
+                
+                div.appendChild(img);
+                div.appendChild(label);
+                previewDiv.appendChild(div);
+            });
+        }
+        
+        // Update progress bar
+        function updateProgress() {
+            const totalAngles = Object.keys(angles).length;
+            const capturedCount = Object.values(angles).filter(v => v === true).length;
+            const progress = (capturedCount / totalAngles) * 100;
+            document.getElementById('progressFill').style.width = progress + '%';
+            document.getElementById('captureCount').innerHTML = `${capturedImages.length}/8 angles captured`;
+        }
+        
+        // Remove image
+        function removeImage(index) {
+            const removedAngle = capturedImages[index].angle;
+            capturedImages.splice(index, 1);
+            
+            // Check if we still have this angle
+            const stillHasAngle = capturedImages.some(item => item.angle === removedAngle);
+            if (!stillHasAngle) {
+                angles[removedAngle] = false;
+            }
+            
+            updatePreview();
+            updateProgress();
+            
+            if (capturedImages.length < 3) {
+                document.getElementById('enrollBtn').disabled = true;
+            } else {
+                document.getElementById('enrollBtn').disabled = false;
+            }
+            
+            showStatus(`Removed ${removedAngle} angle face. Total: ${capturedImages.length} faces`, 'info');
+        }
+        
+        // Reset all
+        function resetCaptures() {
+            capturedImages = [];
+            angles = { front: false, left: false, right: false, up: false };
+            updatePreview();
+            updateProgress();
+            document.getElementById('enrollBtn').disabled = true;
+            showStatus('All captures reset. Please capture new faces.', 'info');
+        }
+        
+        // Enroll faces
+        async function enrollFaces() {
+            if (capturedImages.length === 0) {
+                showStatus('Please capture at least one face first!', 'error');
+                return;
+            }
+            
+            const enrollBtn = document.getElementById('enrollBtn');
+            const originalText = enrollBtn.innerHTML;
+            enrollBtn.disabled = true;
+            enrollBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enrolling...';
+            
+            let successCount = 0;
+            
+            try {
+                for (let i = 0; i < capturedImages.length; i++) {
+                    const response = await fetch('/api/face/enroll', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            face_image: capturedImages[i].data,
+                            angle: capturedImages[i].angle
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    if (result.success) {
+                        successCount++;
+                        showStatus(`Enrolled ${successCount}/${capturedImages.length} faces...`, 'info');
+                    } else {
+                        console.error('Enrollment failed for face:', result.message);
+                    }
+                }
+                
+                if (successCount === capturedImages.length) {
+                    showStatus(`✅ ${successCount} faces enrolled successfully! You can now train the model.`, 'success');
+                } else {
+                    showStatus(`⚠️ Enrolled ${successCount}/${capturedImages.length} faces. Some may have failed.`, 'warning');
+                }
+                
+            } catch (error) {
+                showStatus('Error: ' + error.message, 'error');
+            } finally {
+                enrollBtn.disabled = false;
+                enrollBtn.innerHTML = originalText;
+            }
+        }
+        
+        // Train model function with better error handling
+        async function trainModel() {
+            const trainBtn = document.getElementById('trainBtn');
+            const originalText = trainBtn.innerHTML;
+            
+            trainBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Training...';
+            trainBtn.disabled = true;
+            
+            showStatus('Training face recognition model... This may take a moment.', 'info');
+            
+            try {
+                const response = await fetch('/admin/face/retrain', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                    // Update stats
+                    document.getElementById('facesTrained').textContent = data.faces_trained || 0;
+                    document.getElementById('usersTrained').textContent = data.users_trained || 0;
+                    showStatus('✅ Model trained successfully! Face recognition is now active.', 'success');
+                } else {
+                    showMessage(data.message || 'Training failed. Please check server logs.', 'error');
+                    showStatus('❌ Training failed: ' + (data.message || 'Unknown error'), 'error');
+                }
+            } catch (error) {
+                console.error('Training error:', error);
+                showMessage('Network error: ' + error.message, 'error');
+                showStatus('❌ Training failed: ' + error.message, 'error');
+            } finally {
+                trainBtn.innerHTML = originalText;
+                trainBtn.disabled = false;
+            }
+        }
+        
+        function showMessage(message, type) {
+            let messageDiv = document.getElementById('trainingMessage');
+            
+            if (!messageDiv) {
+                messageDiv = document.createElement('div');
+                messageDiv.id = 'trainingMessage';
+                const trainBtn = document.getElementById('trainBtn');
+                if (trainBtn && trainBtn.parentNode) {
+                    trainBtn.parentNode.insertBefore(messageDiv, trainBtn.nextSibling);
+                } else {
+                    document.querySelector('.text-center.mt-3').appendChild(messageDiv);
+                }
+            }
+            
+            messageDiv.className = `alert alert-${type === 'success' ? 'success' : 'danger'} mt-3`;
+            messageDiv.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i> ${message}`;
+            messageDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 5000);
+        }
+        
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = `status ${type}`;
+            statusDiv.innerHTML = message;
+            setTimeout(() => {
+                if (statusDiv.innerHTML === message) {
+                    setTimeout(() => {
+                        statusDiv.style.display = '';
+                        statusDiv.innerHTML = '';
+                        statusDiv.className = 'status';
+                    }, 500);
+                }
+            }, 4000);
+        }
+        
+        // Fetch training stats on load
+        async function fetchTrainingStats() {
+            try {
+                const response = await fetch('/api/face/stats');
+                const data = await response.json();
+                if (data && data.total_faces !== undefined) {
+                    document.getElementById('facesTrained').textContent = data.total_faces || 0;
+                    document.getElementById('usersTrained').textContent = data.total_users || 0;
+                }
+            } catch (error) {
+                console.log('Could not fetch training stats:', error);
+            }
+        }
+        
+        // Start camera when page loads
+        startCamera();
+        fetchTrainingStats();
+        
+        // Set default active angle
+        setAngle('front');
+        
+        // Stop camera when leaving
+        window.addEventListener('beforeunload', () => {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+        });
+    </script>
+</body>
+</html>

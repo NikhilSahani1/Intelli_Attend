@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block title %}Bulk Import Students{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h4 class="mb-0">
+                        <i class="fas fa-upload me-2"></i>Bulk Import Students
+                    </h4>
+                    <p class="mb-0 mt-2 opacity-75">Upload an Excel or CSV file with student data</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-file-upload me-2"></i>Import Students</h5>
+                </div>
+                <div class="card-body">
+                    <form id="importForm" enctype="multipart/form-data" method="POST" action="{{ url_for('bulk_import_students') }}">
+                        <div class="mb-3">
+                            <label class="form-label">Student Data File</label>
+                            <input type="file" class="form-control" name="file" id="fileInput" accept=".xlsx,.xls,.csv" required>
+                            <small class="text-muted">Supported formats: .xlsx, .xls, .csv</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Default Password</label>
+                            <input type="text" class="form-control" name="default_password" value="Student@123">
+                            <small class="text-muted">Students can change this after first login</small>
+                        </div>
+                        
+                        <div class="form-check mb-2">
+                            <input type="checkbox" class="form-check-input" id="autoVerify" name="auto_verify" value="true" checked>
+                            <label class="form-check-label" for="autoVerify">
+                                Auto-verify all students (no manual approval needed)
+                            </label>
+                        </div>
+                        
+                        <div class="form-check mb-3">
+                            <input type="checkbox" class="form-check-input" id="sendEmail" name="send_credentials" value="true">
+                            <label class="form-check-label" for="sendEmail">
+                                Send login credentials via email
+                            </label>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary" id="importBtn">
+                            <i class="fas fa-upload me-2"></i>Import Students
+                        </button>
+                        <a href="{{ url_for('manage_users') }}" class="btn btn-secondary">
+                            <i class="fas fa-times me-2"></i>Cancel
+                        </a>
+                    </form>
+                    
+                    <div id="importResult" class="mt-3" style="display: none;"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-download me-2"></i>Download Template</h5>
+                </div>
+                <div class="card-body">
+                    <p>Download the template file to ensure correct format:</p>
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('download_template', format='csv') }}" class="btn btn-outline-success">
+                            <i class="fas fa-file-csv me-2"></i>Download CSV Template
+                        </a>
+                        <a href="{{ url_for('download_template', format='excel') }}" class="btn btn-outline-success">
+                            <i class="fas fa-file-excel me-2"></i>Download Excel Template
+                        </a>
+                    </div>
+                    
+                    <hr>
+                    
+                    <h6>Required Columns:</h6>
+                    <ul>
+                        <li><strong>name</strong> - Student's full name</li>
+                        <li><strong>email</strong> - Student's email address</li>
+                        <li><strong>student_id</strong> - Roll number (optional)</li>
+                        <li><strong>moodle_id</strong> - Moodle ID (optional)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Imports -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-history me-2"></i>Recent Bulk Imports</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr><th>Date</th><th>File/Source</th><th>Students Imported</th><th>Status</th><th>Actions</th></tr>
+                            </thead>
+                            <tbody id="importsTable">
+                                <tr><td colspan="5" class="text-center">No imports yet</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('importForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const importBtn = document.getElementById('importBtn');
+    const importResult = document.getElementById('importResult');
+    
+    importBtn.disabled = true;
+    importBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Importing...';
+    importResult.style.display = 'block';
+    importResult.innerHTML = '<div class="alert alert-info"><i class="fas fa-spinner fa-spin me-2"></i>Processing file...</div>';
+    
+    fetch('/api/admin/bulk-import', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            importResult.innerHTML = `
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle me-2"></i>
+                    <strong>Import Successful!</strong><br>
+                    Imported: ${data.imported} students
+                    ${data.errors && data.errors.length ? `<br>Errors: ${data.errors.length}` : ''}
+                </div>
+                ${data.errors && data.errors.length ? `
+                    <details class="mt-2">
+                        <summary>View Errors (${data.errors.length})</summary>
+                        <ul class="text-danger small mt-2">
+                            ${data.errors.slice(0, 10).map(e => `<li>${e}</li>`).join('')}
+                            ${data.errors.length > 10 ? `<li>... and ${data.errors.length - 10} more</li>` : ''}
+                        </ul>
+                    </details>
+                ` : ''}
+            `;
+            loadRecentImports();
+        } else {
+            importResult.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    <strong>Import Failed!</strong><br>
+                    ${data.message}
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        importResult.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-circle me-2"></i>
+                <strong>Error!</strong><br>
+                ${error.message}
+            </div>
+        `;
+    })
+    .finally(() => {
+        importBtn.disabled = false;
+        importBtn.innerHTML = '<i class="fas fa-upload me-2"></i>Import Students';
+    });
+});
+
+async function loadRecentImports() {
+    try {
+        const response = await fetch('/api/admin/recent-imports');
+        const data = await response.json();
+        
+        const tbody = document.getElementById('importsTable');
+        if (data.imports && data.imports.length > 0) {
+            tbody.innerHTML = data.imports.map(imp => `
+                <tr>
+                    <td>${new Date(imp.timestamp).toLocaleString()}</td>
+                    <td>${imp.source}</td>
+                    <td>${imp.count}</td>
+                    <td><span class="badge bg-success">${imp.status}</span></td>
+                    <td>-</td>
+                </tr>
+            `).join('');
+        } else {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center">No imports yet</td></tr>';
+        }
+    } catch (error) {
+        console.error('Error loading imports:', error);
+    }
+}
+
+loadRecentImports();
+</script>
+{% endblock %}

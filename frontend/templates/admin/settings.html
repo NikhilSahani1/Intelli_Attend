@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}Settings{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h2 class="mb-4">System Settings</h2>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>General Settings</h5>
+                </div>
+                <div class="card-body">
+                    <form>
+                        <div class="mb-3">
+                            <label class="form-label">System Name</label>
+                            <input type="text" class="form-control" value="Attendance Management System" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Timezone</label>
+                            <select class="form-control">
+                                <option>UTC</option>
+                                <option selected>Asia/Kolkata</option>
+                                <option>America/New_York</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Date Format</label>
+                            <select class="form-control">
+                                <option>YYYY-MM-DD</option>
+                                <option>DD/MM/YYYY</option>
+                                <option>MM/DD/YYYY</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>Security Settings</h5>
+                </div>
+                <div class="card-body">
+                    <form>
+                        <div class="mb-3">
+                            <label class="form-label">Session Timeout (minutes)</label>
+                            <input type="number" class="form-control" value="120">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Fraud Detection Threshold</label>
+                            <input type="range" class="form-range" min="0" max="1" step="0.1" value="0.7">
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="emailAlerts" checked>
+                            <label class="form-check-label" for="emailAlerts">Enable Email Alerts</label>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Face Recognition Settings</h5>
+                </div>
+                <div class="card-body">
+                    <form>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Recognition Threshold</label>
+                                <input type="range" class="form-range" min="0" max="1" step="0.05" value="0.8">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Max Enrollments per User</label>
+                                <input type="number" class="form-control" value="5">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Image Quality (DPI)</label>
+                                <input type="number" class="form-control" value="300">
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="text-center mt-4">
+        <button class="btn btn-primary">Save Settings</button>
+        <button class="btn btn-secondary">Reset to Default</button>
+    </div>
+</div>
+{% endblock %}

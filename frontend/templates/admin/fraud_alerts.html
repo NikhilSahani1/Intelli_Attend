@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+
+{% block title %}Fraud Alerts{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Fraud Detection Alerts</h2>
+    </div>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-white bg-danger">
+                <div class="card-body">
+                    <h5 class="card-title">Total Alerts</h5>
+                    <h2>{{ stats.total_alerts }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-warning">
+                <div class="card-body">
+                    <h5 class="card-title">Today's Alerts</h5>
+                    <h2>{{ stats.today_alerts }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-info">
+                <div class="card-body">
+                    <h5 class="card-title">High Risk</h5>
+                    <h2>{{ stats.high_risk_count }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-secondary">
+                <div class="card-body">
+                    <h5 class="card-title">Avg Score</h5>
+                    <h2>{{ stats.avg_fraud_score }}%</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- High Risk Alerts -->
+    <div class="card mb-4">
+        <div class="card-header bg-danger text-white">
+            <h5 class="mb-0">⚠️ High Risk Alerts (Score > 0.7)</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>User</th>
+                            <th>Event</th>
+                            <th>Lecture</th>
+                            <th>Score</th>
+                            <th>Risk</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for alert in high_risk %}
+                        <tr class="table-{{ alert.risk_color }}">
+                            <td>{{ alert.timestamp }}</td>
+                            <td>
+                                {{ alert.user_name }}<br>
+                                <small>{{ alert.user_email }}</small>
+                            </td>
+                            <td>{{ alert.event_name }}</td>
+                            <td>{{ alert.lecture }}</td>
+                            <td>
+                                <span class="badge bg-{{ alert.risk_color }}">
+                                    {{ (alert.fraud_score * 100)|round }}%
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge bg-{{ alert.risk_color }}">
+                                    {{ alert.risk_level }}
+                                </span>
+                            </td>
+                            <td>
+                                <a href="{{ url_for('admin_reports') }}?user={{ alert.user_id }}" 
+                                   class="btn btn-sm btn-info">
+                                    <i class="fas fa-chart-line"></i>
+                                </a>
+                                <a href="#" class="btn btn-sm btn-success" onclick="markResolved({{ alert.id }})">
+                                    <i class="fas fa-check"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center">No high risk alerts found</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Medium Risk Alerts -->
+    <div class="card">
+        <div class="card-header bg-warning">
+            <h5 class="mb-0">⚠️ Medium Risk Alerts (Score 0.5 - 0.7)</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>User</th>
+                            <th>Event</th>
+                            <th>Lecture</th>
+                            <th>Score</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for alert in medium_risk %}
+                        <tr>
+                            <td>{{ alert.timestamp }}</td>
+                            <td>
+                                {{ alert.user_name }}<br>
+                                <small>{{ alert.user_email }}</small>
+                            </td>
+                            <td>{{ alert.event_name }}</td>
+                            <td>{{ alert.lecture }}</td>
+                            <td>
+                                <span class="badge bg-warning">
+                                    {{ (alert.fraud_score * 100)|round }}%
+                                </span>
+                            </td>
+                            <td>
+                                <a href="#" class="btn btn-sm btn-success" onclick="markResolved({{ alert.id }})">
+                                    <i class="fas fa-check"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center">No medium risk alerts found</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function markResolved(alertId) {
+    if(confirm('Mark this alert as resolved?')) {
+        // You can implement AJAX call here to mark as resolved
+        alert('Alert ' + alertId + ' marked as resolved');
+        location.reload();
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Events - Admin{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>
+            <i class="fas fa-calendar-alt me-2"></i>Manage Events
+        </h2>
+        <a href="{{ url_for('create_event') }}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>Create New Event
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Event Name</th>
+                            <th>Description</th>
+                            <th>Venue</th>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>Created By</th>
+                            <th>Attendance</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for event in events %}
+                        <tr>
+                            <td>{{ event.id }}</td>
+                            <td>{{ event.name }}</td>
+                            <td>{{ event.description[:50] + '...' if event.description and event.description|length > 50 else event.description }}</td>
+                            <td>{{ event.venue }}</td>
+                            <td>{{ event.date }}</td>
+                            <td>{{ event.time }}</td>
+                            <td>{{ event.created_by }}</td>
+                            <td>{{ event.attendance_count }}</td>
+                            <td>
+                                <a href="{{ url_for('edit_event', event_id=event.id) }}" class="btn btn-sm btn-warning">
+                                    <i class="fas fa-edit"></i> Edit
+                                </a>
+                                <button onclick="deleteEvent({{ event.id }}, '{{ event.name }}')" class="btn btn-sm btn-danger">
+                                    <i class="fas fa-trash"></i> Delete
+                                </button>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="9" class="text-center text-muted">
+                                No events found. <a href="{{ url_for('create_event') }}">Create your first event</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .table th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+    }
+    .table td {
+        vertical-align: middle;
+    }
+    .btn-sm {
+        margin: 0 2px;
+    }
+</style>
+
+<script>
+function deleteEvent(eventId, eventName) {
+    if (confirm(`Are you sure you want to delete "${eventName}"? This will also delete all attendance records for this event. This action cannot be undone!`)) {
+        fetch(`/admin/events/delete/${eventId}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                alert(`Event "${eventName}" deleted successfully!`);
+                location.reload();
+            } else {
+                alert('Error deleting event');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error deleting event');
+        });
+    }
+}
+</script>
+{% endblock %}

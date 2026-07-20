@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+
+{% block title %}Attendance Report - {{ event.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-primary text-white">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h3 class="mb-1">{{ event.name }}</h3>
+                            <p class="mb-0 opacity-75">
+                                <i class="fas fa-calendar me-2"></i>{{ event.date }}
+                                <i class="fas fa-map-marker-alt ms-3 me-2"></i>{{ event.venue|default('TBD') }}
+                            </p>
+                        </div>
+                        <div>
+                            <button class="btn btn-light me-2" onclick="exportReport()">
+                                <i class="fas fa-download me-2"></i>Export CSV
+                            </button>
+                            <button class="btn btn-light" onclick="printReport()">
+                                <i class="fas fa-print me-2"></i>Print
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h6 class="text-uppercase small">Total Registrations</h6>
+                    <h2 class="mb-0">{{ summary.total_registrations|default(0) }}</h2>
+                    <small>Registered users</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h6 class="text-uppercase small">Total Attendance</h6>
+                    <h2 class="mb-0">{{ summary.total_attendance|default(0) }}</h2>
+                    <small>Marked attendance</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <h6 class="text-uppercase small">Attendance Rate</h6>
+                    <h2 class="mb-0">
+                        {% if summary.total_registrations > 0 %}
+                            {{ "%.1f"|format(summary.total_attendance / summary.total_registrations * 100) }}%
+                        {% else %}
+                            0%
+                        {% endif %}
+                    </h2>
+                    <small>Of registered users</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <h6 class="text-uppercase small">Fraud Alerts</h6>
+                    <h2 class="mb-0">{{ summary.fraud_alerts|default(0) }}</h2>
+                    <small>Suspicious activities</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="row mb-4">
+        <div class="col-xl-6">
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Attendance by Lecture</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="lectureChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-6">
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Attendance Timeline</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="timelineChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attendance Table -->
+    <div class="card">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Detailed Attendance Report</h5>
+            <div>
+                <input type="text" class="form-control form-control-sm" id="searchTable" 
+                       placeholder="Search..." style="width: 250px;">
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="attendanceTable">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Moodle ID</th>
+                            <th>Email</th>
+                            {% for lecture in lectures %}
+                                <th>{{ lecture.subject[:10] }}...</th>
+                            {% endfor %}
+                            <th>Total</th>
+                            <th>Percentage</th>
+                            <th>Fraud Score</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td>{{ user.name }}</td>
+                            <td>{{ user.moodle_id }}</td>
+                            <td>{{ user.email }}</td>
+                            {% for lecture in lectures %}
+                                <td class="text-center">
+                                    {% if user.attendance[lecture.id] %}
+                                        <i class="fas fa-check-circle text-success"></i>
+                                    {% else %}
+                                        <i class="fas fa-times-circle text-danger"></i>
+                                    {% endif %}
+                                </td>
+                            {% endfor %}
+                            <td class="text-center">{{ user.total_attended }}</td>
+                            <td>
+                                {% set percentage = (user.total_attended / lectures|length * 100) if lectures|length > 0 else 0 %}
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar bg-{{ 'success' if percentage >= 75 else 'warning' if percentage >= 50 else 'danger' }}" 
+                                         style="width: {{ percentage }}%">
+                                        {{ "%.0f"|format(percentage) }}%
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                {% if user.avg_fraud_score > 0.6 %}
+                                    <span class="badge bg-danger">{{ "%.2f"|format(user.avg_fraud_score) }}</span>
+                                {% elif user.avg_fraud_score > 0.3 %}
+                                    <span class="badge bg-warning">{{ "%.2f"|format(user.avg_fraud_score) }}</span>
+                                {% else %}
+                                    <span class="badge bg-success">{{ "%.2f"|format(user.avg_fraud_score) }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if user.total_attended == lectures|length %}
+                                    <span class="badge bg-success">Complete</span>
+                                {% elif user.total_attended > 0 %}
+                                    <span class="badge bg-warning">Partial</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Absent</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Lecture Attendance Chart
+    const ctx1 = document.getElementById('lectureChart').getContext('2d');
+    new Chart(ctx1, {
+        type: 'bar',
+        data: {
+            labels: {{ lecture_names|tojson }},
+            datasets: [{
+                label: 'Attendance',
+                data: {{ lecture_counts|tojson }},
+                backgroundColor: '#4361ee',
+                borderRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+
+    // Timeline Chart
+    const ctx2 = document.getElementById('timelineChart').getContext('2d');
+    new Chart(ctx2, {
+        type: 'line',
+        data: {
+            labels: {{ timeline_labels|tojson }},
+            datasets: [{
+                label: 'Attendance',
+                data: {{ timeline_data|tojson }},
+                borderColor: '#4361ee',
+                backgroundColor: 'rgba(67, 97, 238, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+
+    // Search functionality
+    document.getElementById('searchTable').addEventListener('keyup', function() {
+        const searchText = this.value.toLowerCase();
+        const table = document.getElementById('attendanceTable');
+        const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+        
+        for (let row of rows) {
+            const name = row.cells[0].textContent.toLowerCase();
+            const moodleId = row.cells[1].textContent.toLowerCase();
+            const email = row.cells[2].textContent.toLowerCase();
+            
+            if (name.includes(searchText) || moodleId.includes(searchText) || email.includes(searchText)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        }
+    });
+});
+
+function exportReport() {
+    window.location.href = "{{ url_for('admin.export_attendance_csv', event_id=event.id) }}";
+}
+
+function printReport() {
+    window.print();
+}
+</script>
+{% endblock %}

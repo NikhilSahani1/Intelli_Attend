@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block title %}Attendance Details{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-clipboard-check me-2"></i>Attendance Record Details
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- User Information -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5 class="border-bottom pb-2">User Information</h5>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Name:</strong> {{ record.user_name }}</p>
+                            <p><strong>Email:</strong> {{ record.user_email }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>User ID:</strong> #{{ record.user_id }}</p>
+                            <p><strong>Face Enrolled:</strong> 
+                                {% if record.face_enrolled %}
+                                    <span class="badge bg-success">Yes</span>
+                                {% else %}
+                                    <span class="badge bg-warning">No</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Event Information -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5 class="border-bottom pb-2">Event Information</h5>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Event Name:</strong> {{ record.event_name }}</p>
+                            <p><strong>Event Date:</strong> {{ record.event_date }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Venue:</strong> {{ record.venue|default('N/A') }}</p>
+                            <p><strong>Event ID:</strong> #{{ record.event_id }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Attendance Details -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5 class="border-bottom pb-2">Attendance Details</h5>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Lecture:</strong> {{ record.lecture_name|default('Main Session') }}</p>
+                            <p><strong>Timestamp:</strong> {{ record.timestamp }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p>
+                                <strong>Fraud Score:</strong> 
+                                {% set fraud_score = record.fraud_score|float %}
+                                {% if fraud_score > 0.8 %}
+                                    <span class="badge bg-danger">{{ "%.2f"|format(fraud_score) }}</span>
+                                {% elif fraud_score > 0.5 %}
+                                    <span class="badge bg-warning">{{ "%.2f"|format(fraud_score) }}</span>
+                                {% else %}
+                                    <span class="badge bg-success">{{ "%.2f"|format(fraud_score) }}</span>
+                                {% endif %}
+                            </p>
+                            <p>
+                                <strong>Verification Status:</strong>
+                                {% if record.verified %}
+                                    <span class="badge bg-success">Verified</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Unverified</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Fraud Analysis -->
+                    {% if record.fraud_score > 0.5 %}
+                    <div class="alert alert-{{ 'danger' if record.fraud_score > 0.8 else 'warning' }}">
+                        <h6>
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Fraud Detection Alert
+                        </h6>
+                        <p class="mb-0">
+                            This attendance record has a fraud score of {{ "%.2f"|format(record.fraud_score) }}.
+                            {% if record.fraud_score > 0.8 %}
+                                This indicates a HIGH probability of fraudulent attendance.
+                            {% else %}
+                                This indicates a MEDIUM probability of fraudulent attendance.
+                            {% endif %}
+                            Please review this record.
+                        </p>
+                    </div>
+                    {% endif %}
+
+                    <!-- Raw Data (Admin Only) - FIXED: Removed tojson filter -->
+                    {% if session.admin_id %}
+                    <div class="accordion mt-4" id="rawDataAccordion">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#rawData">
+                                    <i class="fas fa-code me-2"></i>Raw Record Data
+                                </button>
+                            </h2>
+                            <div id="rawData" class="accordion-collapse collapse" data-bs-parent="#rawDataAccordion">
+                                <div class="accordion-body">
+                                    <pre class="bg-light p-3 rounded overflow-auto"><code>{
+    "id": {{ record.id }},
+    "user_id": {{ record.user_id }},
+    "user_name": "{{ record.user_name }}",
+    "user_email": "{{ record.user_email }}",
+    "face_enrolled": {{ record.face_enrolled }},
+    "event_id": {{ record.event_id }},
+    "event_name": "{{ record.event_name }}",
+    "event_date": "{{ record.event_date }}",
+    "venue": "{{ record.venue|default('N/A') }}",
+    "lecture_name": "{{ record.lecture_name|default('Main Session') }}",
+    "timestamp": "{{ record.timestamp }}",
+    "verified": {{ record.verified }},
+    "fraud_score": {{ record.fraud_score }}
+}</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="card-footer">
+                    <a href="{{ url_for('attendance_log') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Attendance Log
+                    </a>
+                    {% if session.admin_id %}
+                    <a href="{{ url_for('edit_attendance', attendance_id=record.id) }}" class="btn btn-primary float-end">
+                        <i class="fas fa-edit me-2"></i>Edit Record
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    max-height: 400px;
+    overflow-y: auto;
+}
+code {
+    color: #d63384;
+}
+.overflow-auto {
+    overflow: auto !important;
+}
+</style>
+{% endblock %}

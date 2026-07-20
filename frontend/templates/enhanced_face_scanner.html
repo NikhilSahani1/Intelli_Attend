@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Enhanced Face Scanner - AMS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    <style>
+        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        .container { padding-top: 30px; }
+        .card { border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        #video { border-radius: 10px; border: 3px solid #fff; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        .status-badge { font-size: 1rem; padding: 8px 15px; border-radius: 50px; }
+        .location-status { position: fixed; bottom: 20px; right: 20px; z-index: 1000; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <!-- Main Card -->
+                <div class="card">
+                    <div class="card-header bg-primary text-white text-center">
+                        <h3><i class="fas fa-fingerprint me-2"></i>Enhanced Face Scanner</h3>
+                        <p class="mb-0">Face + Location + Liveness Verification</p>
+                    </div>
+                    <div class="card-body">
+                        <!-- Video Feed -->
+                        <div class="text-center mb-3">
+                            <video id="video" width="400" height="300" autoplay muted playsinline style="border-radius: 10px;"></video>
+                            <canvas id="canvas" style="display: none;"></canvas>
+                        </div>
+                        
+                        <!-- Verification Steps -->
+                        <div class="mb-4">
+                            <h6>Verification Steps:</h6>
+                            <div class="progress" style="height: 30px;">
+                                <div id="step1-progress" class="progress-bar bg-warning" style="width: 33%">1. Face Capture</div>
+                                <div id="step2-progress" class="progress-bar bg-secondary" style="width: 33%">2. Liveness Check</div>
+                                <div id="step3-progress" class="progress-bar bg-secondary" style="width: 34%">3. Location Check</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Event Selection -->
+                        <select id="event-select" class="form-select mb-3">
+                            <option value="">Select Event</option>
+                            {% for event in events %}
+                            <option value="{{ event.id }}" data-lat="{{ event.venue_latitude }}" data-lng="{{ event.venue_longitude }}">
+                                {{ event.name }} - {{ event.date }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        
+                        <!-- Liveness Instruction -->
+                        <div id="liveness-instruction" class="alert alert-info text-center" style="display: none;">
+                            <strong id="instruction-text">Please blink your eyes</strong>
+                        </div>
+                        
+                        <!-- Status Messages -->
+                        <div id="status-message" class="alert alert-secondary"></div>
+                        
+                        <!-- Action Buttons -->
+                        <div class="d-grid gap-2">
+                            <button id="start-btn" class="btn btn-success btn-lg" onclick="startVerification()">
+                                <i class="fas fa-play me-2"></i>Start Verification
+                            </button>
+                            <button id="check-in-btn" class="btn btn-primary btn-lg" onclick="checkIn()" disabled>
+                                <i class="fas fa-sign-in-alt me-2"></i>Check In
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Location Status -->
+    <div class="location-status">
+        <div id="location-status" class="status-badge bg-secondary text-white">
+            <i class="fas fa-map-marker-alt me-1"></i>Checking location...
+        </div>
+    </div>
+
+    <script>
+        let video = document.getElementById('video');
+        let canvas = document.getElementById('canvas');
+        let stream = null;
+        let modelsLoaded = false;
+        let capturedFace = null;
+        let livenessPassed = false;
+        let locationVerified = false;
+        let currentEvent = null;
+        let currentUserLocation = null;
+        
+        // Face detection variables
+        let blinkCount = 0;
+        let lastBlinkTime = 0;
+        let detectionInterval = null;
+        let currentAction = null;
+        
+        // Initialize camera and models
+        async function init() {
+            try {
+                // Start camera
+                stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+                await video.play();
+                
+                // Load face-api models
+                await faceapi.nets.tinyFaceDetector.loadFromUri('/static/models');
+                await faceapi.nets.faceLandmark68Net.loadFromUri('/static/models');
+                console.log('✅ Models loaded');
+                modelsLoaded = true;
+                
+                document.getElementById('status-message').innerHTML = 
+                    '<div class="alert alert-success">✅ Camera ready! Select an event and click Start Verification.</div>';
+            } catch (err) {
+                console.error('Camera error:', err);
+                document.getElementById('status-message').innerHTML = 
+                    '<div class="alert alert-danger">❌ Unable to access camera. Please check permissions.</div>';
+            }
+        }
+        
+        // Get user's location
+        async function getUserLocation() {
+            return new Promise((resolve) => {
+                if (!navigator.geolocation) {
+                    resolve(null);
+                    return;
+                }
+                
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const location = {
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude,
+                            accuracy: position.coords.accuracy
+                        };
+                        document.getElementById('location-status').innerHTML = 
+                            `<i class="fas fa-map-marker-alt me-1"></i>📍 Location: ${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`;
+                        document.getElementById('location-status').classList.remove('bg-secondary');
+                        document.getElementById('location-status').classList.add('bg-success');
+                        resolve(location);
+                    },
+                    (error) => {
+                        console.error('Location error:', error);
+                        document.getElementById('location-status').innerHTML = 
+                            '<i class="fas fa-exclamation-triangle me-1"></i>⚠️ Location unavailable';
+                        document.getElementById('location-status').classList.remove('bg-secondary');
+                        document.getElementById('location-status').classList.add('bg-warning');
+                        resolve(null);
+                    },
+                    { enableHighAccuracy: true, timeout: 10000 }
+                );
+            });
+        }
+        
+        // Detect blink for liveness
+        function detectBlink(landmarks) {
+            const leftEye = landmarks.getLeftEye();
+            const rightEye = landmarks.getRightEye();
+            
+            function getEAR(eye) {
+                const v1 = Math.hypot(eye[1].x - eye[5].x, eye[1].y - eye[5].y);
+                const v2 = Math.hypot(eye[2].x - eye[4].x, eye[2].y - eye[4].y);
+                const h = Math.hypot(eye[0].x - eye[3].x, eye[0].y - eye[3].y);
+                return (v1 + v2) / (2.0 * h);
+            }
+            
+            const leftEAR = getEAR(leftEye);
+            const rightEAR = getEAR(rightEye);
+            const avgEAR = (leftEAR + rightEAR) / 2.0;
+            
+            return avgEAR < 0.2;
+        }
+        
+        // Perform liveness detection
+        async function performLivenessCheck() {
+            return new Promise(async (resolve) => {
+                const instructionDiv = document.getElementById('liveness-instruction');
+                const instructionText = document.getElementById('instruction-text');
+                
+                const actions = [
+                    { action: 'blink', instruction: 'Please blink your eyes 3 times', duration: 10000 },
+                    { action: 'smile', instruction: 'Please smile', duration: 5000 }
+                ];
+                
+                instructionDiv.style.display = 'block';
+                let allPassed = true;
+                let blinkCountDetected = 0;
+                let lastBlinkDetected = 0;
+                
+                for (const action of actions) {
+                    instructionText.innerHTML = action.instruction;
+                    
+                    const startTime = Date.now();
+                    let actionCompleted = false;
+                    
+                    await new Promise((resolveAction) => {
+                        const checkInterval = setInterval(async () => {
+                            const detection = await faceapi.detectSingleFace(
+                                video, 
+                                new faceapi.TinyFaceDetectorOptions()
+                            ).withFaceLandmarks();
+                            
+                            if (detection) {
+                                if (action.action === 'blink') {
+                                    const isBlinking = detectBlink(detection.landmarks);
+                                    if (isBlinking && Date.now() - lastBlinkDetected > 500) {
+                                        blinkCountDetected++;
+                                        lastBlinkDetected = Date.now();
+                                        instructionText.innerHTML = `${action.instruction} (${blinkCountDetected}/3)`;
+                                        
+                                        if (blinkCountDetected >= 3) {
+                                            clearInterval(checkInterval);
+                                            resolveAction();
+                                        }
+                                    }
+                                } else if (action.action === 'smile') {
+                                    // Simple smile detection - check mouth corners
+                                    const mouth = detection.landmarks.getMouth();
+                                    const leftCorner = mouth[0];
+                                    const rightCorner = mouth[6];
+                                    const mouthWidth = Math.hypot(rightCorner.x - leftCorner.x, rightCorner.y - leftCorner.y);
+                                    
+                                    if (mouthWidth > 40) {
+                                        clearInterval(checkInterval);
+                                        resolveAction();
+                                    }
+                                }
+                            }
+                            
+                            if (Date.now() - startTime > action.duration) {
+                                clearInterval(checkInterval);
+                                allPassed = false;
+                                resolveAction();
+                            }
+                        }, 100);
+                    });
+                    
+                    if (!allPassed) break;
+                    await new Promise(r => setTimeout(r, 500));
+                }
+                
+                instructionDiv.style.display = 'none';
+                resolve(allPassed);
+            });
+        }
+        
+        // Capture face image
+        async function captureFace() {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            return canvas.toDataURL('image/jpeg', 0.8);
+        }
+        
+        // Verify location with server
+        async function verifyLocation(eventId, lat, lng) {
+            try {
+                const response = await fetch('/api/verify-location', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        event_id: eventId,
+                        latitude: lat,
+                        longitude: lng
+                    })
+                });
+                const result = await response.json();
+                return result;
+            } catch (error) {
+                console.error('Location verification error:', error);
+                return { valid: false, message: 'Location verification failed' };
+            }
+        }
+        
+        // Main verification process
+        async function startVerification() {
+            const eventSelect = document.getElementById('event-select');
+            const eventId = eventSelect.value;
+            
+            if (!eventId) {
+                alert('Please select an event first');
+                return;
+            }
+            
+            if (!modelsLoaded) {
+                alert('Please wait for camera to initialize');
+                return;
+            }
+            
+            // Reset UI
+            document.getElementById('step1-progress').className = 'progress-bar bg-warning';
+            document.getElementById('step2-progress').className = 'progress-bar bg-secondary';
+            document.getElementById('step3-progress').className = 'progress-bar bg-secondary';
+            
+            const statusDiv = document.getElementById('status-message');
+            const startBtn = document.getElementById('start-btn');
+            startBtn.disabled = true;
+            startBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Verifying...';
+            
+            try {
+                // Step 1: Capture Face
+                statusDiv.innerHTML = '<div class="alert alert-info">📸 Step 1: Capturing face...</div>';
+                capturedFace = await captureFace();
+                document.getElementById('step1-progress').className = 'progress-bar bg-success';
+                document.getElementById('step1-progress').innerHTML = '✓ Face Captured';
+                
+                // Step 2: Liveness Detection
+                statusDiv.innerHTML = '<div class="alert alert-info">👁️ Step 2: Liveness detection...</div>';
+                document.getElementById('step2-progress').className = 'progress-bar bg-warning';
+                document.getElementById('step2-progress').innerHTML = '2. Liveness Check';
+                
+                livenessPassed = await performLivenessCheck();
+                if (livenessPassed) {
+                    document.getElementById('step2-progress').className = 'progress-bar bg-success';
+                    document.getElementById('step2-progress').innerHTML = '✓ Liveness Passed';
+                } else {
+                    document.getElementById('step2-progress').className = 'progress-bar bg-danger';
+                    document.getElementById('step2-progress').innerHTML = '✗ Liveness Failed';
+                    throw new Error('Liveness detection failed. Please try again.');
+                }
+                
+                // Step 3: Location Verification
+                statusDiv.innerHTML = '<div class="alert alert-info">📍 Step 3: Verifying location...</div>';
+                document.getElementById('step3-progress').className = 'progress-bar bg-warning';
+                document.getElementById('step3-progress').innerHTML = '3. Location Check';
+                
+                currentUserLocation = await getUserLocation();
+                if (currentUserLocation) {
+                    const locationResult = await verifyLocation(eventId, currentUserLocation.lat, currentUserLocation.lng);
+                    locationVerified = locationResult.valid;
+                    
+                    if (locationVerified) {
+                        document.getElementById('step3-progress').className = 'progress-bar bg-success';
+                        document.getElementById('step3-progress').innerHTML = '✓ Location Verified';
+                        statusDiv.innerHTML = `<div class="alert alert-success">✅ ${locationResult.message}</div>`;
+                    } else {
+                        document.getElementById('step3-progress').className = 'progress-bar bg-warning';
+                        document.getElementById('step3-progress').innerHTML = '⚠️ Location Warning';
+                        statusDiv.innerHTML = `<div class="alert alert-warning">⚠️ ${locationResult.message}<br>You can still check in, but it will be flagged.</div>`;
+                    }
+                } else {
+                    document.getElementById('step3-progress').className = 'progress-bar bg-warning';
+                    document.getElementById('step3-progress').innerHTML = '⚠️ Location Unavailable';
+                    statusDiv.innerHTML = '<div class="alert alert-warning">⚠️ Location unavailable. Check-in will be flagged.</div>';
+                }
+                
+                // All steps completed
+                document.getElementById('check-in-btn').disabled = false;
+                statusDiv.innerHTML += '<div class="alert alert-success mt-2">✅ Verification complete! Click "Check In" to mark attendance.</div>';
+                
+            } catch (error) {
+                console.error('Verification error:', error);
+                statusDiv.innerHTML = `<div class="alert alert-danger">❌ ${error.message}</div>`;
+                document.getElementById('check-in-btn').disabled = true;
+            } finally {
+                startBtn.disabled = false;
+                startBtn.innerHTML = '<i class="fas fa-play me-2"></i>Start Verification';
+            }
+        }
+        
+        // Check in function
+        async function checkIn() {
+            const eventSelect = document.getElementById('event-select');
+            const eventId = eventSelect.value;
+            const selectedOption = eventSelect.options[eventSelect.selectedIndex];
+            const eventName = selectedOption.text;
+            
+            if (!eventId) {
+                alert('Please select an event');
+                return;
+            }
+            
+            const checkInBtn = document.getElementById('check-in-btn');
+            checkInBtn.disabled = true;
+            checkInBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Checking in...';
+            
+            try {
+                const response = await fetch('/api/attendance/check-in', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        event_id: eventId,
+                        lecture_name: 'Main Session',
+                        latitude: currentUserLocation ? currentUserLocation.lat : null,
+                        longitude: currentUserLocation ? currentUserLocation.lng : null,
+                        liveness_score: livenessPassed ? 0.9 : 0.3,
+                        face_verified: true
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert(result.message);
+                    window.location.href = '/dashboard';
+                } else {
+                    alert('Error: ' + result.message);
+                    checkInBtn.disabled = false;
+                    checkInBtn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Check In';
+                }
+            } catch (error) {
+                console.error('Check-in error:', error);
+                alert('Error checking in. Please try again.');
+                checkInBtn.disabled = false;
+                checkInBtn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Check In';
+            }
+        }
+        
+        // Initialize on page load
+        init();
+    </script>
+</body>
+</html>

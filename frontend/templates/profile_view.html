@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Profile - AMS</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .profile-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .profile-header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .profile-header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .profile-content {
+            padding: 40px;
+        }
+
+        .info-section {
+            margin-bottom: 30px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 20px;
+        }
+
+        .info-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .info-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            transition: transform 0.3s ease;
+        }
+
+        .info-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .info-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .info-value {
+            font-size: 1.2em;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .fraud-score {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+
+        .score-high {
+            background: #ff4757;
+            color: white;
+        }
+
+        .score-medium {
+            background: #ffa502;
+            color: white;
+        }
+
+        .score-low {
+            background: #26de81;
+            color: white;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+
+        .status-active {
+            background: #26de81;
+            color: white;
+        }
+
+        .status-inactive {
+            background: #ff4757;
+            color: white;
+        }
+
+        .status-pending {
+            background: #ffa502;
+            color: white;
+        }
+
+        .actions {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #48c774;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #3ec46d;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(72, 199, 116, 0.4);
+        }
+
+        .btn-danger {
+            background: #ff4757;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #ff3838;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 71, 87, 0.4);
+        }
+
+        .btn-info {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .btn-info:hover {
+            background: #138496;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(23, 162, 184, 0.4);
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-danger {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        @media (max-width: 600px) {
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .profile-header {
+                padding: 30px 20px;
+            }
+            
+            .profile-content {
+                padding: 20px;
+            }
+            
+            .actions {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+                text-align: center;
+            }
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .method-error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="profile-header">
+            <h1>User Profile</h1>
+            <p>View and manage user information</p>
+        </div>
+
+        <div class="profile-content">
+            <!-- Check for method error parameter -->
+            {% if request.args.get('error') == 'method_not_allowed' %}
+            <div class="method-error">
+                <strong>⚠️ Method Not Allowed:</strong> The requested action cannot be performed directly. Please use the appropriate form or button.
+            </div>
+            {% endif %}
+
+            {% if user %}
+                <!-- User Information Section -->
+                <div class="info-section">
+                    <h2>Basic Information</h2>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-label">User ID</div>
+                            <div class="info-value">{{ user.id or user.user_id or 'N/A' }}</div>
+                        </div>
+                        
+                        <div class="info-item">
+                            <div class="info-label">Username</div>
+                            <div class="info-value">{{ user.username or user.name or 'N/A' }}</div>
+                        </div>
+                        
+                        <div class="info-item">
+                            <div class="info-label">Email</div>
+                            <div class="info-value">{{ user.email or 'N/A' }}</div>
+                        </div>
+                        
+                        <div class="info-item">
+                            <div class="info-label">Full Name</div>
+                            <div class="info-value">{{ user.full_name or user.name or 'N/A' }}</div>
+                        </div>
+                        
+                        <div class="info-item">
+                            <div class="info-label">Account Status</div>
+                            <div class="info-value">
+                                {% if user.status == 'active' or user.is_active == true %}
+                                    <span class="status-badge status-active">Active</span>
+                                {% elif user.status == 'inactive' or user.is_active == false %}
+                                    <span class="status-badge status-inactive">Inactive</span>
+                                {% elif user.status == 'pending' %}
+                                    <span class="status-badge status-pending">Pending</span>
+                                {% else %}
+                                    <span class="status-badge status-inactive">Unknown</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="info-item">
+                            <div class="info-label">Member Since</div>
+                            <div class="info-value">{{ user.created_at or user.join_date or user.registered_on or 'N/A' }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contact Information -->
+                <div class="info-section">
+                    <h2>Contact Information</h2>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-label">Phone Number</div>
+                            <div class="info-value">{{ user.phone or user.mobile or user.phone_number or 'N/A' }}</div>
+                        </div>
+                        
+                        <div class="info-item">
+                            <div class="info-label">Address</div>
+                            <div class="info-value">{{ user.address or 'N/A' }}</div>
+                        </div>
+                        
+                        <div class="info-item">
+                            <div class="info-label">City</div>
+                            <div class="info-value">{{ user.city or 'N/A' }}</div>
+                        </div>
+                        
+                        <div class="info-item">
+                            <div class="info-label">Country</div>
+                            <div class="info-value">{{ user.country or 'N/A' }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fraud Detection Information -->
+                <div class="info-section">
+                    <h2>Fraud Detection Analysis</h2>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-label">Fraud Score</div>
+                            <div class="info-value">
+                                {% set fraud_score = user.avg_fraud_score or user.fraud_score or user.risk_score or 0 %}
+                                {% if fraud_score is number and fraud_score > 0 %}
+                                    {% if fraud_score > 0.7 %}
+                                        <span class="fraud-score score-high">{{ "%.2f"|format(fraud_score * 100) }}%</span>
+                                    {% elif fraud_score > 0.4 %}
+                                        <span class="fraud-score score-medium">{{ "%.2f"|format(fraud_score * 100) }}%</span>
+                                    {% else %}
+                                        <span class="fraud-score score-low">{{ "%.2f"|format(fraud_score * 100) }}%</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="fraud-score score-low">0%</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="info-item">
+                            <div class="info-label">Risk Level</div>
+                            <div class="info-value">
+                                {% if user.risk_level %}
+                                    {% if user.risk_level|lower == 'high' %}
+                                        <span class="fraud-score score-high">High Risk</span>
+                                    {% elif user.risk_level|lower == 'medium' %}
+                                        <span class="fraud-score score-medium">Medium Risk</span>
+                                    {% elif user.risk_level|lower == 'low' %}
+                                        <span class="fraud-score score-low">Low Risk</span>
+                                    {% else %}
+                                        {{ user.risk_level }}
+                                    {% endif %}
+                                {% else %}
+                                    Not Calculated
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="info-item">
+                            <div class="info-label">Last Activity</div>
+                            <div class="info-value">{{ user.last_login or user.last_active or user.updated_at or 'Never' }}</div>
+                        </div>
+                        
+                        <div class="info-item">
+                            <div class="info-label">Suspicious Activities</div>
+                            <div class="info-value">{{ user.suspicious_count or user.alert_count or '0' }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Additional Information -->
+                {% if user.additional_info %}
+                <div class="info-section">
+                    <h2>Additional Information</h2>
+                    <div class="info-grid">
+                        {% for key, value in user.additional_info.items() %}
+                        <div class="info-item">
+                            <div class="info-label">{{ key|replace('_', ' ')|title }}</div>
+                            <div class="info-value">{{ value or 'N/A' }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Warning Alerts -->
+                {% set fraud_score = user.avg_fraud_score or user.fraud_score or 0 %}
+                {% if fraud_score is number and fraud_score > 0.6 %}
+                <div class="alert alert-warning">
+                    <strong>⚠️ High Fraud Risk Detected!</strong> This user has a fraud score of {{ "%.2f"|format(fraud_score * 100) }}%. Please review their activities.
+                </div>
+                {% endif %}
+
+                {% set suspicious_count = user.suspicious_count or user.alert_count or 0 %}
+                {% if suspicious_count > 5 %}
+                <div class="alert alert-warning">
+                    <strong>⚠️ Multiple Suspicious Activities!</strong> This user has {{ suspicious_count }} suspicious activities recorded.
+                </div>
+                {% endif %}
+
+                <!-- Action Buttons - Using GET method for viewing only -->
+                <div class="actions">
+                    <!-- Edit Profile - Use GET for viewing edit form -->
+                    <a href="{{ url_for('update_profile', user_id=user.id) }}" class="btn btn-primary">Edit Profile</a>
+
+                    <!-- Settings - Use GET for viewing settings -->
+                    <a href="{{ url_for('settings', user_id=user.id) }}" class="btn btn-secondary">Settings</a>
+
+                    <!-- Fraud Report - Use GET for viewing report -->
+                    <a href="{{ url_for('anomaly_report', user_id=user.id) }}" class="btn btn-danger">View Fraud Report</a>
+
+                    <!-- Dashboard -->
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-info">Back to Dashboard</a>
+                </div>
+
+                <!-- Debug Info (remove in production) -->
+                <div style="margin-top: 20px; padding: 10px; background: #f8f9fa; border-radius: 5px; font-size: 12px; color: #666;">
+                    <strong>Debug:</strong> If you're seeing "Method Not Allowed", these endpoints might expect POST requests. 
+                    Try accessing them directly in your browser to see if they load.
+                </div>
+
+                <!-- Loading Spinner -->
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p style="margin-top: 10px;">Loading...</p>
+                </div>
+
+            {% else %}
+                <!-- User Not Found -->
+                <div class="alert alert-warning" style="text-align: center; padding: 40px;">
+                    <h2 style="margin-bottom: 20px;">User Not Found</h2>
+                    <p style="margin-bottom: 20px;">The requested user profile could not be found.</p>
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-primary">Return to Dashboard</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        // Show loading spinner when navigating away
+        document.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', function(e) {
+                if (this.href && !this.href.includes('#') && !this.href.includes('javascript:')) {
+                    document.getElementById('loading').classList.add('active');
+                }
+            });
+        });
+
+        // Handle any AJAX requests if needed
+        function refreshProfile() {
+            document.getElementById('loading').classList.add('active');
+            location.reload();
+        }
+    </script>
+</body>
+</html>

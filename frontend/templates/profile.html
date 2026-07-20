@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Profile - IntelliAttend</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Poppins', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 50px auto;
+        }
+
+        /* Card Styles */
+        .card {
+            border-radius: 20px;
+            border: none;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            border-bottom: none;
+        }
+
+        .card-header h3 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .card-header p {
+            margin: 10px 0 0;
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .card-body {
+            padding: 40px;
+            background: white;
+        }
+
+        /* Profile Image */
+        .profile-image {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .profile-image img {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 4px solid #667eea;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Form Styles */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+            display: block;
+            font-size: 14px;
+        }
+
+        .form-label i {
+            margin-right: 8px;
+            color: #667eea;
+        }
+
+        .form-control {
+            border-radius: 12px;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+
+        .form-control:disabled {
+            background-color: #f8f9fa;
+            cursor: not-allowed;
+        }
+
+        /* Button Styles */
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            padding: 12px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+
+        .btn-edit {
+            background: #ffc107;
+            color: #333;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-edit:hover {
+            background: #e0a800;
+            transform: translateY(-2px);
+            color: #333;
+        }
+
+        /* Alert Styles */
+        .alert {
+            border-radius: 12px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        /* Info Display */
+        .info-row {
+            padding: 12px 0;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #667eea;
+            width: 35%;
+        }
+
+        .info-value {
+            color: #333;
+            width: 65%;
+            font-weight: 500;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                margin: 20px auto;
+            }
+            .card-body {
+                padding: 25px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-user-circle"></i> <strong>User Profile</strong></h3>
+                <p><strong>Manage your personal information</strong></p>
+            </div>
+            <div class="card-body">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show" role="alert">
+                                <i class="fas fa-{% if category == 'success' %}check-circle{% else %}exclamation-circle{% endif %}"></i>
+                                <strong>{{ message }}</strong>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <!-- Toggle between View and Edit mode -->
+                <div class="text-end mb-3">
+                    {% if session.get('edit_mode') %}
+                        <a href="{{ url_for('profile') }}?mode=view" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-eye"></i> View Mode
+                        </a>
+                    {% else %}
+                        <a href="{{ url_for('profile') }}?mode=edit" class="btn btn-edit btn-sm">
+                            <i class="fas fa-edit"></i> Edit Profile
+                        </a>
+                    {% endif %}
+                </div>
+
+                {% if session.get('edit_mode') %}
+                    <!-- Edit Mode Form -->
+                    <form method="POST" action="{{ url_for('update_profile') }}">
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-user"></i> <strong>Full Name</strong>
+                            </label>
+                            <input type="text" class="form-control" name="name" value="{{ user.name }}" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-envelope"></i> <strong>Email Address</strong>
+                            </label>
+                            <input type="email" class="form-control" value="{{ user.email }}" disabled>
+                            <small class="text-muted">Email cannot be changed</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-phone"></i> <strong>Phone Number</strong>
+                            </label>
+                            <input type="tel" class="form-control" name="phone" value="{{ user.phone }}" placeholder="Enter your phone number">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-id-card"></i> <strong>Moodle ID</strong>
+                            </label>
+                            <input type="text" class="form-control" name="moodle_id" value="{{ user.moodle_id }}" placeholder="Enter your Moodle ID">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-id-card"></i> <strong>Aadhaar Number</strong>
+                            </label>
+                            <input type="text" class="form-control" name="aadhaar_number" value="{{ user.aadhaar_number }}" placeholder="Enter Aadhaar number">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-graduation-cap"></i> <strong>Student ID</strong>
+                            </label>
+                            <input type="text" class="form-control" name="student_id" value="{{ user.student_id }}" placeholder="Enter Student ID">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-lock"></i> <strong>Change Password</strong>
+                            </label>
+                            <input type="password" class="form-control" name="new_password" placeholder="Enter new password (leave blank to keep current)">
+                            <small class="text-muted">Minimum 4 characters</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-lock"></i> <strong>Confirm New Password</strong>
+                            </label>
+                            <input type="password" class="form-control" name="confirm_password" placeholder="Confirm new password">
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> <strong>Save Changes</strong>
+                            </button>
+                            <a href="{{ url_for('profile') }}?mode=view" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                {% else %}
+                    <!-- View Mode - Display Information -->
+                    <div class="profile-image">
+                        <i class="fas fa-user-circle" style="font-size: 120px; color: #667eea;"></i>
+                    </div>
+
+                    <div class="info-row">
+                        <div class="info-label"><i class="fas fa-user"></i> <strong>Name:</strong></div>
+                        <div class="info-value">{{ user.name }}</div>
+                    </div>
+
+                    <div class="info-row">
+                        <div class="info-label"><i class="fas fa-envelope"></i> <strong>Email:</strong></div>
+                        <div class="info-value">{{ user.email }}</div>
+                    </div>
+
+                    <div class="info-row">
+                        <div class="info-label"><i class="fas fa-phone"></i> <strong>Phone:</strong></div>
+                        <div class="info-value">{{ user.phone or 'Not provided' }}</div>
+                    </div>
+
+                    <div class="info-row">
+                        <div class="info-label"><i class="fas fa-id-card"></i> <strong>Moodle ID:</strong></div>
+                        <div class="info-value">{{ user.moodle_id or 'Not provided' }}</div>
+                    </div>
+
+                    <div class="info-row">
+                        <div class="info-label"><i class="fas fa-id-card"></i> <strong>Aadhaar Number:</strong></div>
+                        <div class="info-value">{{ user.aadhaar_number or 'Not provided' }}</div>
+                    </div>
+
+                    <div class="info-row">
+                        <div class="info-label"><i class="fas fa-graduation-cap"></i> <strong>Student ID:</strong></div>
+                        <div class="info-value">{{ user.student_id or 'Not provided' }}</div>
+                    </div>
+
+                    <div class="info-row">
+                        <div class="info-label"><i class="fas fa-tag"></i> <strong>Role:</strong></div>
+                        <div class="info-value">{{ user.role|capitalize }}</div>
+                    </div>
+
+                    <div class="info-row">
+                        <div class="info-label"><i class="fas fa-face-smile"></i> <strong>Face Enrolled:</strong></div>
+                        <div class="info-value">
+                            {% if user.face_enrolled %}
+                                <span class="badge bg-success"><i class="fas fa-check-circle"></i> Enrolled</span>
+                            {% else %}
+                                <span class="badge bg-warning"><i class="fas fa-exclamation-triangle"></i> Not Enrolled</span>
+                                <a href="{{ url_for('face_enrollment') }}" class="btn btn-sm btn-primary ms-2">Enroll Now</a>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="info-row">
+                        <div class="info-label"><i class="fas fa-calendar"></i> <strong>Member since:</strong></div>
+                        <div class="info-value">{{ user.created_at[:10] if user.created_at else 'N/A' }}</div>
+                    </div>
+
+                    <div class="d-grid gap-2 mt-4">
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> <strong>Back to Dashboard</strong>
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Password match validation
+        document.querySelector('form')?.addEventListener('submit', function(e) {
+            const newPassword = document.querySelector('input[name="new_password"]');
+            const confirmPassword = document.querySelector('input[name="confirm_password"]');
+            
+            if (newPassword && newPassword.value) {
+                if (newPassword.value.length < 4) {
+                    e.preventDefault();
+                    alert('Password must be at least 4 characters long');
+                    return false;
+                }
+                
+                if (newPassword.value !== confirmPassword.value) {
+                    e.preventDefault();
+                    alert('Passwords do not match!');
+                    return false;
+                }
+            }
+            return true;
+        });
+    </script>
+</body>
+</html>
